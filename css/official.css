@@ -296,6 +296,7 @@ body.sidebar-collapsed .slider-container {
 .status-processing   { background: var(--info-lt);    color: var(--info); }
 .status-ready        { background: var(--success-lt); color: var(--success); }
 .status-completed    { background: var(--surface-2);  color: var(--text-3); }
+.status-cancelled    { background: #F3E8FF; color: #7E22CE; }
 .status-open         { background: var(--danger-lt);  color: var(--danger); }
 .status-investigating{ background: var(--info-lt);    color: var(--info); }
 .status-resolved     { background: var(--success-lt); color: var(--success); }

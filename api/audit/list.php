@@ -10,8 +10,19 @@ if (empty($_SESSION['official_id'])) {
 
 $db = get_db();
 
-$stmt = $db->prepare('SELECT id, official_id, official_name, action, target_type, target_reference, details, created_at FROM audit_log ORDER BY created_at DESC, id DESC');
+$officialRole = (string)($_SESSION['official_role'] ?? '');
+$query = 'SELECT id, official_id, official_name, action, target_type, target_reference, details, created_at FROM audit_log';
+if ($officialRole === 'staff') {
+  $query .= ' WHERE official_id = ?';
+}
+$query .= ' ORDER BY created_at DESC, id DESC';
+
+$stmt = $db->prepare($query);
 if (!$stmt) json_error('Failed to prepare audit log query.', 500);
+if ($officialRole === 'staff') {
+  $officialId = (int)$_SESSION['official_id'];
+  $stmt->bind_param('i', $officialId);
+}
 $rows = db_query_all($stmt);
 $stmt->close();
 

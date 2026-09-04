@@ -248,6 +248,7 @@ function renderDocRequests(data) {
           <div class="action-btns">
             ${r.status === 'pending'    ? `<button class="btn-action process" onclick="openDocumentGenerationModal('${r.ref}')">Process</button>` : ''}
             ${r.status === 'processing' ? `<button class="btn-action ready"   onclick="updateReqStatus('${r.ref}','ready')">Mark Ready</button>` : ''}
+            ${['pending', 'processing'].includes(r.status) ? `<button class="btn-action reject" onclick="cancelReq('${r.ref}')">Cancel Request</button>` : ''}
             ${r.status === 'ready'      ? `<button class="btn-action approve" onclick="updateReqStatus('${r.ref}','completed')">Complete</button>` : ''}
             ${r.status === 'ready'      ? `<button class="btn-action notify"  onclick="notifyPickupReady('${r.ref}')">Notify via SMS</button>` : ''}
             <button class="btn-action view" onclick="showModal('Request Details','${r.ref} — ${r.resident} — ${r.type}')">View</button>
@@ -256,9 +257,10 @@ function renderDocRequests(data) {
     </tr>
   `).join('');
 }
-async function updateReqStatus(ref, newStatus) {
+async function updateReqStatus(ref, newStatus, officialNote = '') {
   try {
     const payload = { reference_no: ref, status: newStatus };
+    if (officialNote) payload.official_note = officialNote;
     const data = await fetchJson(`${API_BASE}/requests/update_status.php`, {
       method: 'POST',
       headers: {
@@ -274,6 +276,16 @@ async function updateReqStatus(ref, newStatus) {
   } catch (err) {
     showToastAdmin('Update Failed', err.message);
   }
+}
+async function cancelReq(ref) {
+  const reason = window.prompt('Brief reason for cancelling this request (required):');
+  if (reason === null) return;
+  const note = reason.trim();
+  if (!note) {
+    showToastAdmin('Cancellation Failed', 'A brief cancellation reason is required.');
+    return;
+  }
+  await updateReqStatus(ref, 'cancelled', note);
 }
 
 function prettifyFieldName(fieldKey) {

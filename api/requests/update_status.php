@@ -15,14 +15,18 @@ $db = get_db();
 $input = read_json_input();
 $referenceNo = trim((string)($input['reference_no'] ?? ''));
 $newStatus = trim((string)($input['status'] ?? ''));
+$officialNote = trim((string)($input['official_note'] ?? ''));
 
 if ($referenceNo === '' || $newStatus === '') {
   json_error('Reference number and new status are required.');
 }
 
-$allowed = ['pending','processing','ready','completed'];
+$allowed = ['pending','processing','ready','completed','cancelled'];
 if (!in_array($newStatus, $allowed, true)) {
   json_error('Invalid status.');
+}
+if ($newStatus === 'cancelled' && ($officialNote === '' || strlen($officialNote) > 150)) {
+  json_error('A brief cancellation reason is required (maximum 150 characters).');
 }
 
 try {
@@ -33,6 +37,9 @@ try {
   $stmt->close();
   if (count($rows) === 0) json_error('Document request not found.', 404);
   $req = $rows[0];
+  if ($newStatus === 'cancelled' && !in_array($req['status'], ['pending', 'processing'], true)) {
+    json_error('Only pending or processing requests can be cancelled.');
+  }
 
   $up = $db->prepare("UPDATE document_requests SET status = ? WHERE id = ?");
   if (!$up) json_error('Failed to prepare update.', 500);
@@ -46,6 +53,9 @@ try {
     $title = 'Document Request Update';
     $statusText = $newStatus === 'ready' ? 'ready for pickup' : $newStatus;
     $body = "Your request {$req['reference_no']} is now {$statusText}.";
+    if ($newStatus === 'cancelled' && $officialNote !== '') {
+      $body .= " Reason: {$officialNote}";
+    }
     $createdAt = date('Y-m-d H:i:s');
     $isRead = 0;
 
@@ -65,7 +75,7 @@ try {
     'Updated document request status',
     'document_request',
     (string)$req['reference_no'],
-    "New status: {$newStatus}"
+    "New status: {$newStatus}" . ($newStatus === 'cancelled' ? "; Reason: {$officialNote}" : '')
   );
 } catch (mysqli_sql_exception $e) {
   json_error('Database error while updating status.', 500);

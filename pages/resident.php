@@ -181,6 +181,7 @@ $residentUsername = $_SESSION['resident_username'] ?? '';
               <option value="processing">Processing</option>
               <option value="ready">Ready for Pickup</option>
               <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
           <div class="table-wrap">
