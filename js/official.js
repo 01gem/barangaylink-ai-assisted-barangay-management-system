@@ -421,9 +421,6 @@ function initDocumentGenerationModal() {
   document.getElementById('closeDocGenModal')?.addEventListener('click', closeDocumentGenerationModal);
   document.getElementById('cancelDocGenModal')?.addEventListener('click', closeDocumentGenerationModal);
   document.getElementById('generateDocBtn')?.addEventListener('click', generateAndPreviewDocument);
-  document.getElementById('docGenModal')?.addEventListener('click', (event) => {
-    if (event.target === event.currentTarget) closeDocumentGenerationModal();
-  });
 }
 
 function findResidentContactForRequest(req) {
@@ -682,7 +679,6 @@ function initResidentCreateForm() {
     resetToCreateMode();
     card.classList.add('show');
   });
-  card.addEventListener('click', event => { if (event.target === card) closeForm(); });
   closeBtn?.addEventListener('click', closeForm);
   cancelBtn?.addEventListener('click', closeForm);
 
@@ -850,7 +846,6 @@ function initOfficialsSection() {
     resetToCreateMode();
     card.classList.add('show');
   });
-  card.addEventListener('click', event => { if (event.target === card) closeForm(); });
   closeBtn?.addEventListener('click', closeForm);
   cancelBtn?.addEventListener('click', closeForm);
   document.getElementById('officialSearch')?.addEventListener('input', filterOfficials);
@@ -988,7 +983,6 @@ function initAnnouncementForm() {
   document.getElementById('newAnnBtn')?.addEventListener('click', () => modal?.classList.add('show'));
   document.getElementById('closeAnnForm')?.addEventListener('click', closeForm);
   document.getElementById('cancelAnnForm')?.addEventListener('click', closeForm);
-  modal?.addEventListener('click', event => { if (event.target === modal) closeForm(); });
   document.getElementById('annFormEl')?.addEventListener('submit', async e => {
     e.preventDefault();
     const title = e.target.querySelector('input[type=text]').value.trim();
@@ -1162,7 +1156,6 @@ function initServiceForm() {
   const closeForm = () => modal?.classList.remove('show');
   document.getElementById('closeServiceForm')?.addEventListener('click', closeForm);
   document.getElementById('cancelServiceForm')?.addEventListener('click', closeForm);
-  modal?.addEventListener('click', event => { if (event.target === modal) closeForm(); });
   document.getElementById('serviceFormEl')?.addEventListener('submit', async event => {
     event.preventDefault();
     const payload = Object.fromEntries(new FormData(event.target).entries());
@@ -1264,7 +1257,6 @@ function showModal(title, body) {
   document.getElementById('actionModal').classList.add('show');
 }
 function closeModal() { document.getElementById('actionModal').classList.remove('show'); }
-document.getElementById('actionModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 
 // ── TOAST ─────────────────────────────────
 let toastTimeout;
