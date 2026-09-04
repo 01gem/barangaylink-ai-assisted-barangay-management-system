@@ -5,7 +5,7 @@ if (empty($_SESSION['resident_id'])) {
   exit;
 }
 $residentName = $_SESSION['resident_name'] ?? 'Resident User';
-$residentEmail = $_SESSION['resident_email'] ?? '';
+$residentUsername = $_SESSION['resident_username'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -13,9 +13,10 @@ $residentEmail = $_SESSION['resident_email'] ?? '';
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BarangayLink — Resident Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/resident.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -272,7 +273,7 @@ $residentEmail = $_SESSION['resident_email'] ?? '';
                 <div class="field"><label>Last Name</label><input type="text" class="form-input" value="" /></div>
               </div>
               <div class="form-2col">
-                <div class="field"><label>Email</label><input type="email" class="form-input" value="" /></div>
+                <div class="field"><label>Username</label><input type="text" class="form-input" value="" /></div>
                 <div class="field"><label>Mobile</label><input type="tel" class="form-input" value="" /></div>
               </div>
               <div class="field"><label>Home Address</label><input type="text" class="form-input" value="" /></div>
@@ -299,7 +300,7 @@ $residentEmail = $_SESSION['resident_email'] ?? '';
 
   <script>
     window.RESIDENT_ID = <?php echo json_encode((int)($_SESSION['resident_id'] ?? 0)); ?>;
-    window.RESIDENT_EMAIL = <?php echo json_encode($_SESSION['resident_email'] ?? ''); ?>;
+    window.RESIDENT_USERNAME = <?php echo json_encode($_SESSION['resident_username'] ?? ''); ?>;
     window.RESIDENT_NAME = <?php echo json_encode($_SESSION['resident_name'] ?? 'Resident User'); ?>;
   </script>
   <script src="../js/resident.js"></script>

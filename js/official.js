@@ -4,12 +4,25 @@
 
 const API_BASE = '../api';
 const SIDEBAR_STATE_KEY = 'barangalink.sidebarCollapsed.official';
+const ACTIVE_SECTION_KEY = 'official_active_section';
 let RESIDENTS = [];
+let OFFICIALS = [];
 let DOC_REQUESTS = [];
 let COMPLAINTS_ADMIN = [];
 let ANNOUNCEMENTS_DATA = [];
 let SERVICES_DATA = [];
-const AUDIT_LOG = [];
+let AUDIT_LOG = [];
+let ACTIVE_DOC_GEN_REQUEST = null;
+const FIXED_OFFICIAL_NAME = 'Hon. Erwin Astronomo';
+const FIXED_OFFICIAL_POSITION = 'Barangay Captain';
+
+const DOC_TEMPLATE_FIELDS = {
+  'Barangay Clearance': ['full_name', 'age', 'civil_status', 'address', 'purpose', 'date_issued'],
+  'Certificate of Residency': ['full_name', 'address', 'years_of_residency', 'purpose', 'date_issued'],
+  'Certificate of Indigency': ['full_name', 'address', 'purpose', 'date_issued'],
+  'Certificate of Good Moral Character': ['full_name', 'address', 'purpose', 'date_issued'],
+  'Business Permit Endorsement': ['owner_name', 'business_name', 'business_type', 'business_address', 'purpose', 'date_issued']
+};
 
 // ── TAB SWITCHING ─────────────────────────
 function switchTab(name) {
@@ -18,9 +31,43 @@ function switchTab(name) {
   const titles = {
     dashboard:'Dashboard', residents:'Resident Management', requests:'Document Requests',
     complaints:'Complaints & Concerns', announcements:'Announcements',
-    services:'Local Services Directory', auditlog:'Audit Log'
+    services:'Local Services Directory', officials:'Manage Officials', auditlog:'Audit Log'
   };
   document.getElementById('pageTitle').textContent = titles[name] || name;
+  try {
+    sessionStorage.setItem(ACTIVE_SECTION_KEY, name);
+  } catch (err) {
+    /* ignore storage failures */
+  }
+  if (name === 'auditlog') {
+    loadAuditLog().catch(err => showToastAdmin('Audit Log Load Failed', err.message));
+  }
+  if (name === 'officials' && window.IS_OFFICIAL_ADMIN) {
+    loadOfficials().catch(err => showToastAdmin('Officials Load Failed', err.message));
+  }
+}
+
+function isValidSectionName(name) {
+  if (!name) return false;
+  return !!document.querySelector(`.snav-item[data-tab="${name}"]`) && !!document.getElementById(`tab-${name}`);
+}
+
+function restoreActiveSection() {
+  let saved = '';
+  try {
+    saved = sessionStorage.getItem(ACTIVE_SECTION_KEY) || '';
+  } catch (err) {
+    saved = '';
+  }
+  if (isValidSectionName(saved)) {
+    switchTab(saved);
+  } else if (saved) {
+    try {
+      sessionStorage.removeItem(ACTIVE_SECTION_KEY);
+    } catch (err) {
+      /* ignore storage failures */
+    }
+  }
 }
 function initNav() {
   document.querySelectorAll('.snav-item[data-tab]').forEach(btn => {
@@ -68,6 +115,12 @@ function initLogoutConfirmation() {
       const ok = window.confirm('Do you want to log out?');
       if (!ok) {
         event.preventDefault();
+      } else {
+        try {
+          sessionStorage.removeItem(ACTIVE_SECTION_KEY);
+        } catch (err) {
+          /* ignore storage failures */
+        }
       }
     });
   });
@@ -187,18 +240,17 @@ function renderDocRequests(data) {
     <tr>
       <td><code style="font-size:12px;color:var(--blue-mid)">${r.ref}</code></td>
       <td style="font-weight:600">${r.resident}</td>
-      <td>${r.residentEmail || '<span style="color:var(--text-3)">No email</span>'}</td>
       <td>${r.type}</td>
       <td>${r.purpose}</td>
       <td>${r.date}</td>
       <td><span class="status-badge status-${r.status}">${r.status}</span></td>
         <td>
           <div class="action-btns">
-            ${r.status === 'pending'    ? `<button class="btn-action process" onclick="updateReqStatus('${r.ref}','processing')">Process</button>` : ''}
+            ${r.status === 'pending'    ? `<button class="btn-action process" onclick="openDocumentGenerationModal('${r.ref}')">Process</button>` : ''}
             ${r.status === 'processing' ? `<button class="btn-action ready"   onclick="updateReqStatus('${r.ref}','ready')">Mark Ready</button>` : ''}
             ${r.status === 'ready'      ? `<button class="btn-action approve" onclick="updateReqStatus('${r.ref}','completed')">Complete</button>` : ''}
-            ${r.status === 'ready'      ? `<button class="btn-action notify"  onclick="notifyPickupReady('${r.ref}', 'both')">Send Email & SMS</button>` : ''}
-            <button class="btn-action view" onclick="showModal('Request Details','${r.ref} — ${r.resident} (${r.residentEmail || 'No email'}) — ${r.type}')">View</button>
+            ${r.status === 'ready'      ? `<button class="btn-action notify"  onclick="notifyPickupReady('${r.ref}')">Notify via SMS</button>` : ''}
+            <button class="btn-action view" onclick="showModal('Request Details','${r.ref} — ${r.resident} — ${r.type}')">View</button>
           </div>
         </td>
     </tr>
@@ -216,11 +268,147 @@ async function updateReqStatus(ref, newStatus) {
       body: JSON.stringify(payload)
     });
     await loadRequests();
+    await loadAuditLog();
     await refreshDashboard();
     showToastAdmin('Status Updated', data.message || `${ref} status set to ${newStatus}.`);
   } catch (err) {
     showToastAdmin('Update Failed', err.message);
   }
+}
+
+function prettifyFieldName(fieldKey) {
+  return fieldKey
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function escapeAttribute(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getResidentDefaultsForRequest(req) {
+  if (!req) return { full_name: '', address: '' };
+  const resident = RESIDENTS.find(r => Number(r.dbId) === Number(req.residentId));
+  return {
+    full_name: resident?.name || req.resident || '',
+    address: resident && resident.addr !== '-' ? resident.addr : ''
+  };
+}
+
+function closeDocumentGenerationModal() {
+  const modal = document.getElementById('docGenModal');
+  const fieldsWrap = document.getElementById('docGenFields');
+  const previewWrap = document.getElementById('docGenPreviewWrap');
+  const previewFrame = document.getElementById('docGenPreviewFrame');
+  const previewEmpty = document.getElementById('docGenPreviewEmpty');
+  if (modal) modal.classList.remove('show');
+  if (fieldsWrap) fieldsWrap.innerHTML = '';
+  if (previewWrap) previewWrap.style.display = 'none';
+  if (previewEmpty) previewEmpty.style.display = 'flex';
+  if (previewFrame) previewFrame.src = 'about:blank';
+  ACTIVE_DOC_GEN_REQUEST = null;
+}
+
+function renderDocumentGenerationFields(req) {
+  const fieldsWrap = document.getElementById('docGenFields');
+  if (!fieldsWrap) return;
+  const keys = DOC_TEMPLATE_FIELDS[req.type] || [];
+  const residentDefaults = getResidentDefaultsForRequest(req);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const purposeDefault = req.purpose || '';
+
+  fieldsWrap.innerHTML = keys.map((key) => {
+    let value = '';
+    if (key === 'full_name' || key === 'owner_name') value = residentDefaults.full_name;
+    if (key === 'address' || key === 'business_address') value = residentDefaults.address;
+    if (key === 'purpose') value = purposeDefault;
+    if (key === 'date_issued') value = todayIso;
+    const isDate = key === 'date_issued';
+    return `
+      <div class="field" style="margin-top:8px;">
+        <label>${prettifyFieldName(key)}</label>
+        <input
+          type="${isDate ? 'date' : 'text'}"
+          class="form-input"
+          data-doc-field="${key}"
+          value="${escapeAttribute(value)}"
+        />
+      </div>
+    `;
+  }).join('');
+}
+
+function openDocumentGenerationModal(ref) {
+  const req = DOC_REQUESTS.find(r => r.ref === ref);
+  if (!req) return;
+  if (!DOC_TEMPLATE_FIELDS[req.type]) {
+    showToastAdmin('Template Missing', `No template configuration found for "${req.type}".`);
+    return;
+  }
+  ACTIVE_DOC_GEN_REQUEST = req;
+  const modal = document.getElementById('docGenModal');
+  const title = document.getElementById('docGenTitle');
+  const meta = document.getElementById('docGenMeta');
+  const previewWrap = document.getElementById('docGenPreviewWrap');
+  const previewEmpty = document.getElementById('docGenPreviewEmpty');
+  if (title) title.textContent = `Generate ${req.type}`;
+  if (meta) meta.textContent = `Reference: ${req.ref} · Resident: ${req.resident}`;
+  if (previewWrap) previewWrap.style.display = 'none';
+  if (previewEmpty) previewEmpty.style.display = 'flex';
+  renderDocumentGenerationFields(req);
+  if (modal) modal.classList.add('show');
+}
+
+async function generateAndPreviewDocument() {
+  if (!ACTIVE_DOC_GEN_REQUEST) return;
+  const fields = {};
+  document.querySelectorAll('#docGenFields [data-doc-field]').forEach((input) => {
+    const key = input.getAttribute('data-doc-field');
+    if (!key) return;
+    fields[key] = (input.value || '').trim();
+  });
+  fields.official_name = FIXED_OFFICIAL_NAME;
+  fields.official_position = FIXED_OFFICIAL_POSITION;
+
+  try {
+    const data = await fetchJson(`${API_BASE}/requests/generate_document.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: ACTIVE_DOC_GEN_REQUEST.id,
+        fields
+      })
+    });
+
+    const previewFrame = document.getElementById('docGenPreviewFrame');
+    const previewWrap = document.getElementById('docGenPreviewWrap');
+    const previewEmpty = document.getElementById('docGenPreviewEmpty');
+    if (previewFrame && data.pdf_path) {
+      const separator = data.pdf_path.includes('?') ? '&' : '?';
+      previewFrame.src = `${data.pdf_path}${separator}t=${Date.now()}`;
+    }
+    if (previewWrap) previewWrap.style.display = 'block';
+    if (previewEmpty) previewEmpty.style.display = 'none';
+
+    await updateReqStatus(ACTIVE_DOC_GEN_REQUEST.ref, 'processing');
+    showToastAdmin('Document Generated', `Generated PDF for ${ACTIVE_DOC_GEN_REQUEST.ref}.`);
+  } catch (err) {
+    showToastAdmin('Generation Failed', err.message);
+  }
+}
+
+function initDocumentGenerationModal() {
+  document.getElementById('closeDocGenModal')?.addEventListener('click', closeDocumentGenerationModal);
+  document.getElementById('cancelDocGenModal')?.addEventListener('click', closeDocumentGenerationModal);
+  document.getElementById('generateDocBtn')?.addEventListener('click', generateAndPreviewDocument);
+  document.getElementById('docGenModal')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) closeDocumentGenerationModal();
+  });
 }
 
 function findResidentContactForRequest(req) {
@@ -236,25 +424,21 @@ function findResidentContactForRequest(req) {
   return byName && byName.contact && byName.contact !== '' && byName.contact !== '-' ? byName.contact : '';
 }
 
-async function notifyPickupReady(ref, channel = 'email') {
+async function notifyPickupReady(ref) {
   const req = DOC_REQUESTS.find(r => r.ref === ref);
   if (!req) return;
   try {
-    const payload = { reference_no: ref, channel };
-    if (channel === 'email' || channel === 'both') {
-      const emailOverride = window.prompt(
-        `Send pickup notification to ${req.resident} for ${ref}.\nIf you know the resident email, enter it below. Leave blank to auto-detect.`,
+    const payload = { reference_no: ref };
+    let contact = findResidentContactForRequest(req);
+    if (!contact) {
+      const contactOverride = window.prompt(
+        `Notify ${req.resident} via SMS that ${ref} is ready for pickup.\nEnter contact number, or leave blank to look up from records.`,
         ''
       );
-      if (emailOverride && emailOverride.trim() !== '') {
-        payload.email = emailOverride.trim();
+      if (contactOverride && contactOverride.trim() !== '') {
+        payload.contact = contactOverride.trim();
       }
-    }
-    if (channel === 'sms' || channel === 'both') {
-      const contact = findResidentContactForRequest(req);
-      if (!contact) {
-        throw new Error('Resident contact number not found.');
-      }
+    } else {
       payload.contact = contact;
     }
     const data = await fetchJson(`${API_BASE}/requests/notify_ready.php`, {
@@ -266,8 +450,9 @@ async function notifyPickupReady(ref, channel = 'email') {
       body: JSON.stringify(payload)
     });
     await loadRequests();
+    await loadAuditLog();
     await refreshDashboard();
-    showToastAdmin('Resident Notified', data.message || `${ref} pickup notification ${channel} sent.`);
+    showToastAdmin('Resident Notified', data.message || `${ref} SMS pickup notification sent.`);
   } catch (err) {
     showToastAdmin('Notify Failed', err.message);
   }
@@ -328,6 +513,7 @@ async function updateComplaint(id) {
       body: JSON.stringify({ id, status, official_note: officialNote })
     });
     await loadComplaints();
+    await loadAuditLog();
     await refreshDashboard();
     showToastAdmin(resolving ? 'Complaint Resolved' : 'Complaint Updated', data.message || `${c.ref} status updated to "${status}".`);
   } catch (err) {
@@ -344,17 +530,28 @@ function mapResidentRow(row) {
     lname: row.lname || '',
     addr: row.address || '-',
     contact: row.contact || '-',
-    email: row.email || '',
+    username: row.username || '',
     status: 'verified'
+  };
+}
+
+function mapAuditRow(row) {
+  return {
+    ts: row.created_at || '',
+    user: row.official_name || 'Unknown Official',
+    role: 'Official',
+    action: row.action || 'Action',
+    module: row.target_type || '-',
+    ip: row.target_reference || '-'
   };
 }
 
 function mapRequestRow(row) {
   return {
+    id: Number(row.id),
     ref: row.reference_no,
     residentId: row.resident_id ? Number(row.resident_id) : 0,
     resident: row.resident_name || 'Resident',
-    residentEmail: row.resident_email || '',
     type: row.document_type,
     purpose: row.purpose,
     date: row.date_requested,
@@ -482,6 +679,7 @@ function initResidentCreateForm() {
       });
       closeForm();
       await loadResidents();
+      await loadAuditLog();
       await refreshDashboard();
       showToastAdmin(isEdit ? 'Resident Updated' : 'Resident Added', isEdit ? 'Resident record was updated successfully.' : 'New resident account was created successfully.');
     } catch (err) {
@@ -504,7 +702,7 @@ function openEditResidentForm(dbId) {
   form.fname.value = resident.fname;
   form.lname.value = resident.lname;
   form.contact.value = resident.contact === '-' ? '' : resident.contact;
-  form.email.value = resident.email;
+  form.username.value = resident.username;
   form.address.value = resident.addr === '-' ? '' : resident.addr;
   form.password.value = '';
   passwordInput.required = false;
@@ -530,12 +728,178 @@ async function deleteResident(dbId) {
       body: JSON.stringify({ resident_id: resident.dbId })
     });
     await loadResidents();
+    await loadAuditLog();
     await refreshDashboard();
     showToastAdmin('Resident Deleted', `${resident.name} was removed from resident records.`);
   } catch (err) {
     showToastAdmin('Delete Failed', err.message);
   }
 }
+
+function mapOfficialRow(row) {
+  return {
+    dbId: Number(row.id),
+    fname: row.fname || '',
+    lname: row.lname || '',
+    name: `${row.fname || ''} ${row.lname || ''}`.trim(),
+    username: row.username || '',
+    contact: row.contact || '-',
+    address: row.address || '',
+    position: row.position || '-',
+    role: row.role || 'staff',
+    status: row.status || 'active'
+  };
+}
+
+function renderOfficials(data) {
+  const tbody = document.getElementById('officialsBody');
+  if (!tbody) return;
+  tbody.innerHTML = data.map(o => {
+    const isSelf = Number(o.dbId) === Number(window.OFFICIAL_ID);
+    const toggleLabel = o.status === 'active' ? 'Deactivate' : 'Activate';
+    return `
+    <tr>
+      <td><code style="font-size:12px;color:var(--blue-mid)">${o.dbId}</code></td>
+      <td style="font-weight:600;color:var(--text)">${o.name}</td>
+      <td>${o.username}</td>
+      <td>${o.contact}</td>
+      <td>${o.position}</td>
+      <td><span class="status-badge" style="background:var(--surface-2);color:var(--text-2)">${o.role}</span></td>
+      <td><span class="status-badge status-${o.status === 'active' ? 'verified' : 'suspended'}">${o.status}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-action process" onclick="openEditOfficialForm(${o.dbId})">Edit</button>
+          ${isSelf ? '' : `<button class="btn-action ${o.status === 'active' ? 'reject' : 'approve'}" onclick="toggleOfficialStatus(${o.dbId})">${toggleLabel}</button>`}
+        </div>
+      </td>
+    </tr>
+  `;
+  }).join('');
+}
+
+function filterOfficials() {
+  const searchEl = document.getElementById('officialSearch');
+  const statusEl = document.getElementById('officialStatusFilter');
+  if (!searchEl || !statusEl) return;
+  const q = searchEl.value.toLowerCase();
+  const s = statusEl.value;
+  renderOfficials(OFFICIALS.filter(o => {
+    const hay = `${o.name} ${o.username} ${o.position}`.toLowerCase();
+    return hay.includes(q) && (s === 'all' || o.status === s);
+  }));
+}
+
+async function loadOfficials() {
+  if (!window.IS_OFFICIAL_ADMIN) return;
+  const data = await fetchJson(`${API_BASE}/officials/list.php`);
+  OFFICIALS = (data.officials || []).map(mapOfficialRow);
+  renderOfficials(OFFICIALS);
+}
+
+function initOfficialsSection() {
+  if (!window.IS_OFFICIAL_ADMIN) return;
+  const openBtn = document.getElementById('addOfficialBtn');
+  const closeBtn = document.getElementById('closeOfficialForm');
+  const cancelBtn = document.getElementById('cancelOfficialForm');
+  const card = document.getElementById('officialFormCard');
+  const form = document.getElementById('officialFormEl');
+  const title = document.getElementById('officialFormTitle');
+  const submitBtn = document.getElementById('officialFormSubmitBtn');
+  const passwordLabel = document.getElementById('officialPasswordLabel');
+  const passwordInput = form?.querySelector('input[name="password"]');
+  if (!card || !form) return;
+
+  const resetToCreateMode = () => {
+    form.reset();
+    form.official_id.value = '';
+    title.innerHTML = '<i class="fa-solid fa-user-plus"></i> Add New Official';
+    submitBtn.textContent = 'Save Official';
+    passwordLabel.textContent = 'Temporary Password';
+    passwordInput.required = true;
+    passwordInput.placeholder = '';
+  };
+  const closeForm = () => {
+    card.style.display = 'none';
+    resetToCreateMode();
+  };
+
+  openBtn?.addEventListener('click', () => {
+    resetToCreateMode();
+    card.style.display = 'block';
+  });
+  closeBtn?.addEventListener('click', closeForm);
+  cancelBtn?.addEventListener('click', closeForm);
+  document.getElementById('officialSearch')?.addEventListener('input', filterOfficials);
+  document.getElementById('officialStatusFilter')?.addEventListener('change', filterOfficials);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(form).entries());
+    const isEdit = payload.official_id && String(payload.official_id).trim() !== '';
+    const url = isEdit ? `${API_BASE}/officials/update.php` : `${API_BASE}/officials/create.php`;
+    try {
+      await fetchJson(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      closeForm();
+      await loadOfficials();
+      await loadAuditLog();
+      showToastAdmin(isEdit ? 'Official Updated' : 'Official Added', isEdit ? 'Official account was updated successfully.' : 'New official account was created successfully.');
+    } catch (err) {
+      showToastAdmin(isEdit ? 'Update Failed' : 'Create Failed', err.message);
+    }
+  });
+}
+
+function openEditOfficialForm(dbId) {
+  const official = OFFICIALS.find(o => o.dbId === Number(dbId));
+  const card = document.getElementById('officialFormCard');
+  const form = document.getElementById('officialFormEl');
+  const title = document.getElementById('officialFormTitle');
+  const submitBtn = document.getElementById('officialFormSubmitBtn');
+  const passwordLabel = document.getElementById('officialPasswordLabel');
+  const passwordInput = form?.querySelector('input[name="password"]');
+  if (!official || !card || !form || !title || !submitBtn || !passwordLabel || !passwordInput) return;
+
+  form.official_id.value = String(official.dbId);
+  form.fname.value = official.fname;
+  form.lname.value = official.lname;
+  form.contact.value = official.contact === '-' ? '' : official.contact;
+  form.username.value = official.username;
+  form.address.value = official.address;
+  form.position.value = official.position === '-' ? '' : official.position;
+  form.role.value = official.role;
+  form.password.value = '';
+  passwordInput.required = false;
+  passwordInput.placeholder = 'Leave blank to keep current password';
+  title.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Official';
+  submitBtn.textContent = 'Update Official';
+  passwordLabel.textContent = 'New Password (optional)';
+  card.style.display = 'block';
+}
+
+async function toggleOfficialStatus(dbId) {
+  const official = OFFICIALS.find(o => o.dbId === Number(dbId));
+  if (!official) return;
+  const next = official.status === 'active' ? 'deactivate' : 'activate';
+  const ok = window.confirm(`${next === 'deactivate' ? 'Deactivate' : 'Activate'} official account for ${official.name}?`);
+  if (!ok) return;
+  try {
+    await fetchJson(`${API_BASE}/officials/deactivate.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ official_id: official.dbId })
+    });
+    await loadOfficials();
+    await loadAuditLog();
+    showToastAdmin(next === 'deactivate' ? 'Official Deactivated' : 'Official Activated', `${official.name} is now ${next === 'deactivate' ? 'inactive' : 'active'}.`);
+  } catch (err) {
+    showToastAdmin('Update Failed', err.message);
+  }
+}
+
 function initComplaintsAdmin() {
   renderComplaintsAdmin(COMPLAINTS_ADMIN);
   document.getElementById('compSearch')?.addEventListener('input', filterComplaintsAdmin);
@@ -603,6 +967,7 @@ function initAnnouncementForm() {
         body: JSON.stringify({ title, content, is_pinned: 0 })
       });
       await loadAnnouncements();
+      await loadAuditLog();
       document.getElementById('annForm').style.display='none';
       e.target.reset();
       showToastAdmin('Announcement Posted', 'Announcement posted successfully.');
@@ -625,6 +990,7 @@ async function editAnnouncement(id) {
       body: JSON.stringify({ id, title, content, is_pinned: Number(announcement.is_pinned) === 1 })
     });
     await loadAnnouncements();
+    await loadAuditLog();
     showToastAdmin('Announcement Updated', 'Announcement updated successfully.');
   } catch (err) {
     showToastAdmin('Update Failed', err.message);
@@ -649,6 +1015,7 @@ async function toggleAnnouncementPin(id) {
       })
     });
     await loadAnnouncements();
+    await loadAuditLog();
     showToastAdmin('Announcement Updated', Number(announcement.is_pinned) === 1 ? 'Announcement unpinned.' : 'Announcement pinned.');
   } catch (err) {
     showToastAdmin('Update Failed', err.message);
@@ -663,6 +1030,7 @@ async function deleteAnnouncement(id) {
       body: JSON.stringify({ id })
     });
     await loadAnnouncements();
+    await loadAuditLog();
     showToastAdmin('Announcement Deleted', 'Announcement deleted successfully.');
   } catch (err) {
     showToastAdmin('Delete Failed', err.message);
@@ -701,6 +1069,12 @@ async function loadServices() {
   SERVICES_DATA = data.services || [];
   renderServicesAdmin();
 }
+
+async function loadAuditLog() {
+  const data = await fetchJson(`${API_BASE}/audit/list.php`);
+  AUDIT_LOG = (data.logs || []).map(mapAuditRow);
+  renderAuditLog();
+}
 function resetServiceForm() {
   const form = document.getElementById('serviceFormEl');
   form?.reset();
@@ -732,6 +1106,7 @@ function initServiceForm() {
         body: JSON.stringify(payload)
       });
       await loadServices();
+      await loadAuditLog();
       document.getElementById('serviceForm').style.display = 'none';
       resetServiceForm();
       showToastAdmin(isEdit ? 'Service Updated' : 'Service Added', 'Local service saved successfully.');
@@ -760,6 +1135,7 @@ async function deleteService(id) {
       body: JSON.stringify({ id })
     });
     await loadServices();
+    await loadAuditLog();
     await refreshDashboard();
     showToastAdmin('Service Removed', 'Local service removed successfully.');
   } catch (err) {
@@ -772,7 +1148,23 @@ const AUDIT_TAG_COLORS = {
   'Request Approved':    '#059669', 'Request Submitted': '#1976D2',
   'Announcement Posted': '#D97706', 'Complaint Filed':   '#EF4444',
   'Resident Verified':   '#0D9488', 'Login':             '#94A3B8',
-  'Status Updated':      '#0EA5E9'
+  'Status Updated':      '#0EA5E9',
+  'Created resident': '#0D9488',
+  'Updated resident': '#0284C7',
+  'Deleted resident': '#DC2626',
+  'Updated document request status': '#0EA5E9',
+  'Sent pickup notification': '#7C3AED',
+  'Updated complaint status': '#D97706',
+  'Resolved complaint': '#16A34A',
+  'Created announcement': '#D97706',
+  'Updated announcement': '#2563EB',
+  'Deleted announcement': '#DC2626',
+  'Created service': '#0D9488',
+  'Updated service': '#0284C7',
+  'Created official': '#0D9488',
+  'Updated official': '#0284C7',
+  'Deactivated official': '#DC2626',
+  'Activated official': '#16A34A'
 };
 function renderAuditLog() {
   const tbody = document.getElementById('auditBody');
@@ -825,18 +1217,21 @@ function showToastAdmin(title, body) {
 // ── INIT ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initNav();
+  restoreActiveSection();
   initSidebarToggle();
   initLogoutConfirmation();
   initResidentTable();
   initDocRequestsTable();
   initComplaintsAdmin();
   initResidentCreateForm();
+  initOfficialsSection();
   initAnnouncementForm();
   initServiceForm();
+  initDocumentGenerationModal();
   renderAuditLog();
   (async () => {
     try {
-      await Promise.all([loadResidents(), loadRequests(), loadComplaints(), loadAnnouncements(), loadServices()]);
+      await Promise.all([loadResidents(), loadRequests(), loadComplaints(), loadAnnouncements(), loadServices(), loadAuditLog(), ...(window.IS_OFFICIAL_ADMIN ? [loadOfficials()] : [])]);
       await refreshDashboard();
     } catch (err) {
       showToastAdmin('Data Load Failed', err.message);

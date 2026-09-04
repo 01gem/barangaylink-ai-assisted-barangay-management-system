@@ -4,6 +4,7 @@
 
 const API_BASE = '../api';
 const SIDEBAR_STATE_KEY = 'barangalink.sidebarCollapsed.resident';
+const ACTIVE_SECTION_KEY = 'resident_active_section';
 let REQUESTS = [];
 let COMPLAINTS = [];
 let NOTIFICATIONS = [];
@@ -23,6 +24,34 @@ function switchTab(name) {
   });
   const titles = { dashboard:'Dashboard', requests:'Document Requests', complaints:'Complaints & Concerns', notifications:'Notifications', profile:'My Profile' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
+  try {
+    sessionStorage.setItem(ACTIVE_SECTION_KEY, name);
+  } catch (err) {
+    /* ignore storage failures */
+  }
+}
+
+function isValidSectionName(name) {
+  if (!name) return false;
+  return !!document.querySelector(`.snav-item[data-tab="${name}"]`) && !!document.getElementById(`tab-${name}`);
+}
+
+function restoreActiveSection() {
+  let saved = '';
+  try {
+    saved = sessionStorage.getItem(ACTIVE_SECTION_KEY) || '';
+  } catch (err) {
+    saved = '';
+  }
+  if (isValidSectionName(saved)) {
+    switchTab(saved);
+  } else if (saved) {
+    try {
+      sessionStorage.removeItem(ACTIVE_SECTION_KEY);
+    } catch (err) {
+      /* ignore storage failures */
+    }
+  }
 }
 
 function initNav() {
@@ -71,6 +100,12 @@ function initLogoutConfirmation() {
       const ok = window.confirm('Do you want to log out?');
       if (!ok) {
         event.preventDefault();
+      } else {
+        try {
+          sessionStorage.removeItem(ACTIVE_SECTION_KEY);
+        } catch (err) {
+          /* ignore storage failures */
+        }
       }
     });
   });
@@ -449,6 +484,7 @@ function showToast(title, body) {
 // ── INIT ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initNav();
+  restoreActiveSection();
   initSidebarToggle();
   initLogoutConfirmation();
   initRequestsTable();

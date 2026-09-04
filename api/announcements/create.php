@@ -30,5 +30,14 @@ if (!$stmt->execute()) {
 $announcementId = $stmt->insert_id;
 $stmt->close();
 
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Created announcement',
+  'announcement',
+  $title
+);
+
 json_success(['id' => $announcementId, 'message' => 'Announcement created successfully.']);
 ?>

@@ -21,29 +21,43 @@ function send_sms_via_httpsms(string $apiKey, string $fromNumber, string $toNumb
     'content' => $content,
     'sim' => $simSlot ?: 'SIM1'
   ]);
-
-  $context = stream_context_create([
-    'http' => [
-      'method' => 'POST',
-      'header' => implode("\r\n", [
-        'Content-Type: application/json',
-        'Accept: application/json',
-        'x-api-key: ' . $apiKey,
-        'Content-Length: ' . strlen($payload),
-      ]),
-      'content' => $payload,
-      'ignore_errors' => true,
-      'timeout' => 20,
-    ],
-  ]);
-
-  $response = file_get_contents('https://api.httpsms.com/v1/messages/send', false, $context);
-  if ($response === false) {
-    return ['status' => 'failed', 'reason' => 'SMS send failed: unable to reach httpSMS.'];
+  if ($payload === false) {
+    return ['status' => 'failed', 'reason' => 'SMS payload encoding failed.'];
   }
 
-  $statusLine = $http_response_header[0] ?? '';
-  if (strpos($statusLine, '200') === false && strpos($statusLine, '201') === false && strpos($statusLine, '202') === false) {
+  if (!function_exists('curl_init')) {
+    return ['status' => 'failed', 'reason' => 'SMS send failed: PHP cURL extension is not enabled.'];
+  }
+
+  $ch = curl_init('https://api.httpsms.com/v1/messages/send');
+  if ($ch === false) {
+    return ['status' => 'failed', 'reason' => 'SMS send failed: could not initialize cURL.'];
+  }
+
+  curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+      'Content-Type: application/json',
+      'Accept: application/json',
+      'x-api-key: ' . $apiKey,
+      'Content-Length: ' . strlen($payload),
+    ],
+    CURLOPT_POSTFIELDS => $payload,
+    CURLOPT_CONNECTTIMEOUT => 10,
+    CURLOPT_TIMEOUT => 25,
+  ]);
+
+  $response = curl_exec($ch);
+  if ($response === false) {
+    $errorMessage = curl_error($ch);
+    curl_close($ch);
+    return ['status' => 'failed', 'reason' => 'SMS send failed: ' . ($errorMessage !== '' ? $errorMessage : 'unable to reach httpSMS.')];
+  }
+
+  $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  if (!in_array($httpStatus, [200, 201, 202], true)) {
     $decoded = json_decode($response, true);
     $errorMessage = is_array($decoded) && !empty($decoded['message']) ? $decoded['message'] : $response;
     return ['status' => 'failed', 'reason' => 'SMS send failed: ' . $errorMessage];
@@ -109,6 +123,32 @@ if (!$updateStmt->execute()) {
   json_error('Failed to resolve complaint: ' . $updateStmt->error, 500);
 }
 $updateStmt->close();
+
+$residentId = (int)($complaint['resident_id'] ?? 0);
+if ($residentId > 0) {
+  $title = 'Complaint Update';
+  $body = "Your complaint {$complaint['reference_no']} is now {$status}.";
+  $createdAt = date('Y-m-d H:i:s');
+  $isRead = 0;
+
+  $notify = $db->prepare('INSERT INTO notifications (resident_id, title, body, is_read, created_at) VALUES (?, ?, ?, ?, ?)');
+  if (!$notify) json_error('Failed to prepare complaint notification insert.', 500);
+  $notify->bind_param('issis', $residentId, $title, $body, $isRead, $createdAt);
+  if (!$notify->execute()) {
+    json_error('Failed to create complaint notification: ' . $notify->error, 500);
+  }
+  $notify->close();
+}
+
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Resolved complaint',
+  'complaint',
+  (string)$complaint['reference_no'],
+  $officialNote !== '' ? "Official note: {$officialNote}" : ''
+);
 
 json_success([
   'status_updated' => true,

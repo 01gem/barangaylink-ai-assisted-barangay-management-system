@@ -4,6 +4,7 @@ if (empty($_SESSION['official_id'])) {
   header('Location: login.php');
   exit;
 }
+$isOfficialAdmin = ($_SESSION['official_role'] ?? '') === 'admin';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -11,9 +12,10 @@ if (empty($_SESSION['official_id'])) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BarangayLink — Official Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/official.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -48,6 +50,9 @@ if (empty($_SESSION['official_id'])) {
       <button class="snav-item" data-tab="announcements"><i class="fa-solid fa-bullhorn"></i> <span class="nav-text">Announcements</span></button>
       <button class="snav-item" data-tab="services"><i class="fa-solid fa-store"></i> <span class="nav-text">Local Services</span></button>
       <div class="nav-group-label">System</div>
+      <?php if ($isOfficialAdmin): ?>
+      <button class="snav-item" data-tab="officials"><i class="fa-solid fa-user-shield"></i> <span class="nav-text">Manage Officials</span></button>
+      <?php endif; ?>
       <button class="snav-item" data-tab="auditlog"><i class="fa-solid fa-scroll"></i> <span class="nav-text">Audit Log</span></button>
     </nav>
     <div class="sidebar-footer">
@@ -117,7 +122,7 @@ if (empty($_SESSION['official_id'])) {
             </div>
             <div class="form-2col">
               <div class="field"><label>Contact</label><input type="text" name="contact" class="form-input" required /></div>
-              <div class="field"><label>Email</label><input type="email" name="email" class="form-input" required /></div>
+              <div class="field"><label>Username</label><input type="text" name="username" class="form-input" required /></div>
             </div>
             <div class="field"><label>Address</label><input type="text" name="address" class="form-input" required /></div>
             <div class="field" style="margin-top:12px;"><label id="residentPasswordLabel">Temporary Password</label><input type="password" name="password" class="form-input" required /></div>
@@ -162,7 +167,7 @@ if (empty($_SESSION['official_id'])) {
           </div>
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Ref #</th><th>Resident</th><th>Email</th><th>Document Type</th><th>Purpose</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Ref #</th><th>Resident</th><th>Document Type</th><th>Purpose</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="reqsBody"></tbody>
             </table>
           </div>
@@ -208,7 +213,7 @@ if (empty($_SESSION['official_id'])) {
             </div>
             <div class="field" style="margin-top:12px;"><label>Content</label><textarea class="form-input" rows="5" placeholder="Write the announcement content here…" required></textarea></div>
             <div class="field" style="margin-top:8px;">
-              <label>Send SMS Notification to Residents? <span class="opt-label">(via Semaphore API)</span></label>
+              <label>Send SMS Notification to Residents? <span class="opt-label">(via httpSMS)</span></label>
               <label class="toggle-label"><input type="checkbox" id="smsToggle" /> <span class="toggle-switch"></span> <span>Yes, send SMS to all registered residents</span></label>
             </div>
             <div class="form-actions"><button type="submit" class="btn-submit-form">Post Announcement</button><button type="button" class="btn-cancel-form" id="cancelAnnForm">Cancel</button></div>
@@ -250,6 +255,64 @@ if (empty($_SESSION['official_id'])) {
         <div class="services-admin-grid" id="servicesAdminGrid"></div>
       </div>
 
+      <?php if ($isOfficialAdmin): ?>
+      <!-- ─── MANAGE OFFICIALS ─── -->
+      <div class="tab-panel" id="tab-officials">
+        <div class="tab-header">
+          <h2>Manage Officials</h2>
+          <button class="btn-primary-action" id="addOfficialBtn"><i class="fa-solid fa-plus"></i> Add Official</button>
+        </div>
+        <div class="card form-card" id="officialFormCard" style="display:none;">
+          <div class="form-card-header">
+            <h3 id="officialFormTitle"><i class="fa-solid fa-user-plus"></i> Add New Official</h3>
+            <button class="close-card-btn" id="closeOfficialForm"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <form id="officialFormEl">
+            <input type="hidden" name="official_id" />
+            <div class="form-2col">
+              <div class="field"><label>First Name</label><input type="text" name="fname" class="form-input" required /></div>
+              <div class="field"><label>Last Name</label><input type="text" name="lname" class="form-input" required /></div>
+            </div>
+            <div class="form-2col">
+              <div class="field"><label>Contact</label><input type="text" name="contact" class="form-input" required /></div>
+              <div class="field"><label>Username</label><input type="text" name="username" class="form-input" required /></div>
+            </div>
+            <div class="field"><label>Address</label><input type="text" name="address" class="form-input" required /></div>
+            <div class="form-2col" style="margin-top:12px;">
+              <div class="field"><label>Position</label><input type="text" name="position" class="form-input" required /></div>
+              <div class="field"><label>Role</label>
+                <select name="role" class="form-input" required>
+                  <option value="staff">Staff</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div class="field" style="margin-top:12px;"><label id="officialPasswordLabel">Temporary Password</label><input type="password" name="password" class="form-input" required /></div>
+            <div class="form-actions">
+              <button type="submit" class="btn-submit-form" id="officialFormSubmitBtn">Save Official</button>
+              <button type="button" class="btn-cancel-form" id="cancelOfficialForm">Cancel</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="table-toolbar">
+            <input type="text" class="table-search" id="officialSearch" placeholder="Search by name, username, position…" />
+            <select class="table-filter" id="officialStatusFilter">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="officialsTable">
+              <thead><tr><th>ID</th><th>Full Name</th><th>Username</th><th>Contact</th><th>Position</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="officialsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+
       <!-- ─── AUDIT LOG ─── -->
       <div class="tab-panel" id="tab-auditlog">
         <div class="tab-header"><h2>Audit Log</h2></div>
@@ -278,6 +341,37 @@ if (empty($_SESSION['official_id'])) {
     <div class="modal-box" id="actionModalBox"></div>
   </div>
 
+  <!-- Document Generation Modal -->
+  <div class="modal-overlay" id="docGenModal">
+    <div class="modal-box docgen-modal-box">
+      <div class="docgen-modal-head">
+        <h3 id="docGenTitle" class="docgen-modal-title">Generate Document</h3>
+        <button type="button" class="close-card-btn" id="closeDocGenModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="docGenMeta" class="docgen-modal-meta"></div>
+      <div class="docgen-modal-grid">
+        <div class="docgen-preview-col">
+          <h4 class="docgen-preview-title">PDF Preview</h4>
+          <div id="docGenPreviewEmpty" class="docgen-preview-empty">Generate a document to see its PDF preview here.</div>
+          <div id="docGenPreviewWrap" class="docgen-preview-wrap" style="display:none;">
+            <iframe id="docGenPreviewFrame" title="Generated document preview" class="docgen-preview-frame"></iframe>
+          </div>
+        </div>
+        <div class="docgen-form-col">
+          <div class="form-2col" id="docGenFields"></div>
+          <div class="docgen-actions">
+            <button type="button" class="btn-cancel-form" id="cancelDocGenModal">Close</button>
+            <button type="button" class="btn-submit-form" id="generateDocBtn">Generate &amp; Preview</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.IS_OFFICIAL_ADMIN = <?php echo $isOfficialAdmin ? 'true' : 'false'; ?>;
+    window.OFFICIAL_ID = <?php echo (int)$_SESSION['official_id']; ?>;
+  </script>
   <script src="../js/official.js"></script>
 </body>
 </html>

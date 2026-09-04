@@ -17,6 +17,22 @@ if ($id <= 0) {
 }
 
 $db = get_db();
+$targetReference = "Announcement ID {$id}";
+$lookup = $db->prepare('SELECT title FROM announcements WHERE id = ? LIMIT 1');
+if ($lookup) {
+  $lookup->bind_param('i', $id);
+  if ($lookup->execute()) {
+    $lookup->bind_result($title);
+    if ($lookup->fetch()) {
+      $resolvedTitle = trim((string)$title);
+      if ($resolvedTitle !== '') {
+        $targetReference = $resolvedTitle;
+      }
+    }
+  }
+  $lookup->close();
+}
+
 $stmt = $db->prepare('DELETE FROM announcements WHERE id = ?');
 if (!$stmt) json_error('Failed to prepare announcement delete.', 500);
 $stmt->bind_param('i', $id);
@@ -28,6 +44,15 @@ if ($stmt->affected_rows === 0) {
   json_error('Announcement not found.', 404);
 }
 $stmt->close();
+
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Deleted announcement',
+  'announcement',
+  $targetReference
+);
 
 json_success(['message' => 'Announcement deleted successfully.']);
 ?>

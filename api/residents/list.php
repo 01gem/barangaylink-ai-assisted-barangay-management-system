@@ -9,7 +9,7 @@ if (empty($_SESSION['official_id'])) {
 
 $db = get_db();
 
-$sql = "SELECT id, fname, lname, address, contact, email FROM residents ORDER BY id DESC";
+$sql = "SELECT id, fname, lname, address, contact, username FROM residents ORDER BY id DESC";
 $stmt = $db->prepare($sql);
 if (!$stmt) json_error('Failed to prepare residents query.', 500);
 $rows = db_query_all($stmt);

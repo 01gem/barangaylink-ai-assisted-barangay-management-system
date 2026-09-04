@@ -41,5 +41,14 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Updated service',
+  'service',
+  $serviceName
+);
+
 json_success(['message' => 'Service updated successfully.']);
 ?>

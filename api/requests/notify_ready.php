@@ -1,12 +1,5 @@
 <?php
 require_once __DIR__ . '/../common.php';
-require_once __DIR__ . '/../../phpmailer/src/PHPMailer.php';
-require_once __DIR__ . '/../../phpmailer/src/SMTP.php';
-require_once __DIR__ . '/../../phpmailer/src/Exception.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 session_start();
 
 if (empty($_SESSION['official_id'])) {
@@ -21,23 +14,15 @@ $db = get_db();
 $input = read_json_input();
 
 $referenceNo = trim((string)($input['reference_no'] ?? ''));
-$channel = strtolower(trim((string)($input['channel'] ?? 'email')));
-$emailOverride = trim((string)($input['email'] ?? ''));
 $contactOverride = trim((string)($input['contact'] ?? ''));
 if ($referenceNo === '') {
   json_error('Request reference number is required.');
 }
-if ($emailOverride !== '' && !filter_var($emailOverride, FILTER_VALIDATE_EMAIL)) {
-  json_error('Provided email is invalid.');
-}
 if ($contactOverride !== '' && !preg_match('/^[+0-9][0-9\s-]{6,}$/', $contactOverride)) {
   json_error('Provided contact number is invalid.');
 }
-if (!in_array($channel, ['email', 'sms', 'both'], true)) {
-  $channel = 'email';
-}
 
-$reqStmt = $db->prepare("SELECT id, reference_no, resident_id, resident_name, resident_email, document_type, status FROM document_requests WHERE reference_no = ? LIMIT 1");
+$reqStmt = $db->prepare("SELECT id, reference_no, resident_id, resident_name, document_type, status FROM document_requests WHERE reference_no = ? LIMIT 1");
 if (!$reqStmt) json_error('Failed to prepare request lookup.', 500);
 $reqStmt->bind_param('s', $referenceNo);
 $rows = db_query_all($reqStmt);
@@ -47,100 +32,27 @@ if (count($rows) === 0) {
 }
 $request = $rows[0];
 
-$residentEmail = $emailOverride;
-$residentContact = $contactOverride;
-if ($residentEmail === '') {
-  $residentEmail = trim((string)($request['resident_email'] ?? ''));
+$residentId = isset($request['resident_id']) ? (int)$request['resident_id'] : 0;
+if ($residentId <= 0) {
+  json_error('Document request is missing resident linkage.', 500);
 }
-if ($residentEmail === '' && !empty($request['resident_id'])) {
-  $rid = (int)$request['resident_id'];
-  $resById = $db->prepare("SELECT email FROM residents WHERE id = ? LIMIT 1");
-  if ($resById) {
-    $resById->bind_param('i', $rid);
-    $resByIdRows = db_query_all($resById);
-    $resById->close();
-    if (count($resByIdRows) > 0) {
-      $residentEmail = (string)$resByIdRows[0]['email'];
-    }
-  }
+
+$resContactStmt = $db->prepare('SELECT contact FROM residents WHERE id = ? LIMIT 1');
+if (!$resContactStmt) json_error('Failed to prepare resident contact lookup.', 500);
+$resContactStmt->bind_param('i', $residentId);
+$resContactRows = db_query_all($resContactStmt);
+$resContactStmt->close();
+if (count($resContactRows) === 0) {
+  json_error('Linked resident record not found for this request.', 404);
 }
-if ($residentEmail === '') {
-  $residentName = trim((string)$request['resident_name']);
-  if ($residentName !== '') {
-    $resStmt = $db->prepare("SELECT email FROM residents WHERE CONCAT(fname, ' ', lname) = ? LIMIT 1");
-    if ($resStmt) {
-      $resStmt->bind_param('s', $residentName);
-      $resRows = db_query_all($resStmt);
-      $resStmt->close();
-      if (count($resRows) > 0) {
-        $residentEmail = (string)$resRows[0]['email'];
-      }
-    }
-  }
-}
+$residentContact = $contactOverride !== '' ? $contactOverride : trim((string)($resContactRows[0]['contact'] ?? ''));
 
 if ($residentContact === '') {
-  if (!empty($request['resident_id'])) {
-    $rid = (int)$request['resident_id'];
-    $resContactStmt = $db->prepare('SELECT contact FROM residents WHERE id = ? LIMIT 1');
-    if ($resContactStmt) {
-      $resContactStmt->bind_param('i', $rid);
-      $resContactRows = db_query_all($resContactStmt);
-      $resContactStmt->close();
-      if (count($resContactRows) > 0) {
-        $residentContact = trim((string)$resContactRows[0]['contact']);
-      }
-    }
-  }
-}
-
-if ($residentContact === '') {
-  $residentName = trim((string)$request['resident_name']);
-  if ($residentName !== '') {
-    $resContactStmt = $db->prepare("SELECT contact FROM residents WHERE CONCAT(fname, ' ', lname) = ? LIMIT 1");
-    if ($resContactStmt) {
-      $resContactStmt->bind_param('s', $residentName);
-      $resContactRows = db_query_all($resContactStmt);
-      $resContactStmt->close();
-      if (count($resContactRows) > 0) {
-        $residentContact = trim((string)$resContactRows[0]['contact']);
-      }
-    }
-  }
-}
-
-if (($channel === 'sms' || $channel === 'both') && $residentContact === '') {
   json_error('Resident contact number not found. Enter the number manually when sending SMS.', 400);
 }
 
-$subject = 'Barangay Document Ready for Pickup';
 $safeResident = $request['resident_name'] !== '' ? $request['resident_name'] : 'Resident';
-$message = "Hello {$safeResident},\n\n"
-  . "Your requested document ({$request['document_type']}) with reference number {$request['reference_no']} is now ready for pickup at the Barangay Hall.\n\n"
-  . "Please bring a valid ID when claiming your document.\n"
-  . "A document processing fee applies and will be discussed at the barangay hall during pickup.\n\n"
-  . "Thank you.\nBarangay Official Portal";
-
 $smsMessage = "Hello {$safeResident}, your requested document ({$request['document_type']}) with reference number {$request['reference_no']} is now ready for pickup at the Barangay Hall of Sampaguita. Please bring a valid ID when claiming your document. - Barangay Hall of Sampaguita";
-
-// ===== PHPMailer Configuration =====
-// Set the following environment variables in your .env or system:
-// PHPMAILER_HOST: Your SMTP server (e.g., smtp.gmail.com, smtp.mailtrap.io)
-// PHPMAILER_PORT: SMTP port (e.g., 587 for TLS, 465 for SSL)
-// PHPMAILER_USERNAME: SMTP username/email address
-// PHPMAILER_PASSWORD: SMTP password
-// PHPMAILER_FROM_EMAIL: Sender email address (e.g., noreply@barangay.com)
-// PHPMAILER_FROM_NAME: Sender name (e.g., BarangayLink of Sampaguita)
-// PHPMAILER_ENCRYPTION: TLS or SSL (default: tls)
-// ====================================
-
-$smtpHost = getenv('PHPMAILER_HOST');
-$smtpPort = (int)(getenv('PHPMAILER_PORT') ?: 587);
-$smtpUsername = getenv('PHPMAILER_USERNAME');
-$smtpPassword = getenv('PHPMAILER_PASSWORD');
-$senderEmail = getenv('PHPMAILER_FROM_EMAIL') ?: 'dulduconemco1@gmail.com';
-$senderName = getenv('PHPMAILER_FROM_NAME') ?: 'BarangayLink of Sampaguita';
-$encryption = getenv('PHPMAILER_ENCRYPTION') ?: 'tls';
 
 function send_sms_via_httpsms(string $apiKey, string $fromNumber, string $toNumber, string $content, string $simSlot = 'SIM1'): void {
   if ($apiKey === '' || $fromNumber === '' || $toNumber === '' || $content === '') {
@@ -153,73 +65,53 @@ function send_sms_via_httpsms(string $apiKey, string $fromNumber, string $toNumb
     'content' => $content,
     'sim' => $simSlot ?: 'SIM1'
   ]);
-
-  $context = stream_context_create([
-    'http' => [
-      'method' => 'POST',
-      'header' => implode("\r\n", [
-        'Content-Type: application/json',
-        'Accept: application/json',
-        'x-api-key: ' . $apiKey,
-        'Content-Length: ' . strlen($payload),
-      ]),
-      'content' => $payload,
-      'ignore_errors' => true,
-      'timeout' => 20,
-    ],
-  ]);
-
-  $response = file_get_contents('https://api.httpsms.com/v1/messages/send', false, $context);
-  if ($response === false) {
-    json_error('SMS send failed: unable to reach httpSMS.', 500);
+  if ($payload === false) {
+    json_error('SMS payload encoding failed.', 500);
   }
 
-  $statusLine = $http_response_header[0] ?? '';
-  if (strpos($statusLine, '200') === false && strpos($statusLine, '201') === false && strpos($statusLine, '202') === false) {
+  if (!function_exists('curl_init')) {
+    json_error('SMS send failed: PHP cURL extension is not enabled.', 500);
+  }
+
+  $ch = curl_init('https://api.httpsms.com/v1/messages/send');
+  if ($ch === false) {
+    json_error('SMS send failed: could not initialize cURL.', 500);
+  }
+
+  curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+      'Content-Type: application/json',
+      'Accept: application/json',
+      'x-api-key: ' . $apiKey,
+      'Content-Length: ' . strlen($payload),
+    ],
+    CURLOPT_POSTFIELDS => $payload,
+    CURLOPT_CONNECTTIMEOUT => 10,
+    CURLOPT_TIMEOUT => 25,
+  ]);
+
+  $response = curl_exec($ch);
+  if ($response === false) {
+    $errorMessage = curl_error($ch);
+    curl_close($ch);
+    json_error('SMS send failed: ' . ($errorMessage !== '' ? $errorMessage : 'unable to reach httpSMS.'), 500);
+  }
+
+  $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  if (!in_array($httpStatus, [200, 201, 202], true)) {
     $decoded = json_decode($response, true);
     $errorMessage = is_array($decoded) && !empty($decoded['message']) ? $decoded['message'] : $response;
     json_error('SMS send failed: ' . $errorMessage, 500);
   }
 }
 
-if ($channel === 'sms' || $channel === 'both') {
-  $smsApiKey = getenv('HTTPSMS_API_KEY') ?: '';
-  $smsFromNumber = getenv('HTTPSMS_FROM_NUMBER') ?: '';
-  $smsSimSlot = getenv('HTTPSMS_SIM_SLOT') ?: 'SIM1';
-  send_sms_via_httpsms($smsApiKey, $smsFromNumber, $residentContact, $smsMessage, $smsSimSlot);
-}
-
-if ($channel === 'email' || $channel === 'both') {
-  if ($residentEmail === '') {
-    json_error('Resident email not found. Enter the email manually when notifying.', 400);
-  }
-
-  if (!$smtpHost || !$smtpUsername || !$smtpPassword) {
-    json_error('PHPMailer SMTP configuration is missing. Check your environment variables.', 500);
-  }
-
-  try {
-    $mail = new PHPMailer(true);
-
-    $mail->isSMTP();
-    $mail->Host = $smtpHost;
-    $mail->Port = $smtpPort;
-    $mail->SMTPAuth = true;
-    $mail->Username = $smtpUsername;
-    $mail->Password = $smtpPassword;
-    $mail->SMTPSecure = strtolower($encryption) === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
-
-    $mail->setFrom($senderEmail, $senderName);
-    $mail->addAddress($residentEmail, $safeResident);
-    $mail->Subject = $subject;
-    $mail->Body = $message;
-    $mail->isHTML(false);
-
-    $mail->send();
-  } catch (Exception $e) {
-    json_error('Email send failed: ' . $mail->ErrorInfo, 500);
-  }
-}
+$smsApiKey = getenv('HTTPSMS_API_KEY') ?: '';
+$smsFromNumber = getenv('HTTPSMS_FROM_NUMBER') ?: '';
+$smsSimSlot = getenv('HTTPSMS_SIM_SLOT') ?: 'SIM1';
+send_sms_via_httpsms($smsApiKey, $smsFromNumber, $residentContact, $smsMessage, $smsSimSlot);
 
 $status = 'ready';
 $upStmt = $db->prepare("UPDATE document_requests SET status = ? WHERE id = ?");
@@ -231,11 +123,17 @@ if (!$upStmt->execute()) {
 }
 $upStmt->close();
 
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Sent pickup notification',
+  'document_request',
+  (string)$request['reference_no'],
+  "Status updated to {$status}. SMS sent to {$residentContact}."
+);
+
 json_success([
-  'message' => $channel === 'sms'
-    ? "SMS ready notice sent to {$residentContact} from Barangay Hall of Sampaguita."
-    : ($channel === 'both'
-      ? "Email and SMS ready notices sent for {$safeResident}."
-      : "Pickup notice sent to {$residentEmail}. Fee reminder included without showing exact amount.")
+  'message' => "SMS ready notice sent to {$residentContact} from Barangay Hall of Sampaguita."
 ]);
 ?>

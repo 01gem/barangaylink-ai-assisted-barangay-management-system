@@ -33,5 +33,14 @@ if (!$stmt->execute()) {
 $serviceId = $stmt->insert_id;
 $stmt->close();
 
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Created service',
+  'service',
+  $serviceName
+);
+
 json_success(['id' => $serviceId, 'message' => 'Service created successfully.']);
 ?>

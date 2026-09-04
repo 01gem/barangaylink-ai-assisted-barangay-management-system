@@ -27,11 +27,59 @@ function require_post(): void {
   }
 }
 
+function require_official_session(): void {
+  if (empty($_SESSION['official_id'])) {
+    json_error('Unauthorized', 401);
+  }
+}
+
+function require_official_admin(): void {
+  require_official_session();
+  if (($_SESSION['official_role'] ?? '') !== 'admin') {
+    json_error('Admin access required.', 403);
+  }
+}
+
+function official_full_name(array $row): string {
+  return trim(($row['fname'] ?? '') . ' ' . ($row['lname'] ?? ''));
+}
+
 function db_query_all(mysqli_stmt $stmt): array {
   if (!$stmt->execute()) {
     json_error('Database query failed: ' . $stmt->error, 500);
   }
   $result = $stmt->get_result();
   return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+function log_audit(
+  mysqli $conn,
+  ?int $officialId,
+  string $officialName,
+  string $action,
+  string $targetType,
+  ?string $targetReference,
+  string $details = ''
+): bool {
+  $safeOfficialName = trim($officialName) !== '' ? trim($officialName) : 'Unknown Official';
+  $safeAction = trim($action);
+  $safeTargetType = trim($targetType);
+  $safeTargetReference = $targetReference !== null ? trim($targetReference) : null;
+  $safeDetails = trim($details);
+  $safeOfficialId = ($officialId !== null && $officialId > 0) ? $officialId : null;
+
+  $stmt = $conn->prepare('INSERT INTO audit_log (official_id, official_name, action, target_type, target_reference, details) VALUES (?, ?, ?, ?, ?, ?)');
+  if (!$stmt) {
+    error_log('Audit log prepare failed: ' . $conn->error);
+    return false;
+  }
+
+  $stmt->bind_param('isssss', $safeOfficialId, $safeOfficialName, $safeAction, $safeTargetType, $safeTargetReference, $safeDetails);
+  $ok = $stmt->execute();
+  if (!$ok) {
+    error_log('Audit log execute failed: ' . $stmt->error);
+  }
+  $stmt->close();
+  return $ok;
 }
 ?>

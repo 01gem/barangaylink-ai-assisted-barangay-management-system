@@ -17,6 +17,22 @@ if ($id <= 0) {
 }
 
 $db = get_db();
+$targetReference = "Service ID {$id}";
+$lookup = $db->prepare('SELECT service_name FROM local_services WHERE id = ? LIMIT 1');
+if ($lookup) {
+  $lookup->bind_param('i', $id);
+  if ($lookup->execute()) {
+    $lookup->bind_result($serviceName);
+    if ($lookup->fetch()) {
+      $resolvedName = trim((string)$serviceName);
+      if ($resolvedName !== '') {
+        $targetReference = $resolvedName;
+      }
+    }
+  }
+  $lookup->close();
+}
+
 $stmt = $db->prepare('DELETE FROM local_services WHERE id = ?');
 if (!$stmt) json_error('Failed to prepare service delete.', 500);
 $stmt->bind_param('i', $id);
@@ -28,6 +44,15 @@ if ($stmt->affected_rows === 0) {
   json_error('Service not found.', 404);
 }
 $stmt->close();
+
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Deleted service',
+  'service',
+  $targetReference
+);
 
 json_success(['message' => 'Service deleted successfully.']);
 ?>

@@ -26,13 +26,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; }
 body {
-  font-family: 'Jost', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--surface);
   color: var(--text);
   min-height: 100%;
   overflow-x: hidden;
 }
-h1, h2, h3 { font-family: 'Cormorant Garamond', serif; line-height: 1.25; }
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  line-height: 1.25;
+}
 a { text-decoration: none; color: inherit; }
 
 /* ── LAYOUT ─────────────────────────────── */
@@ -85,7 +89,7 @@ a { text-decoration: none; color: inherit; }
 }
 .brand-name {
   display: block;
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 22px; font-weight: 700;
   color: white;
 }
@@ -137,7 +141,7 @@ a { text-decoration: none; color: inherit; }
   gap: 0.5rem;
 }
 .al-check-heading {
-  font-family: 'Jost', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -223,7 +227,7 @@ a { text-decoration: none; color: inherit; }
 .auth-tab {
   flex: 1;
   padding: 10px;
-  font-family: 'Jost', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   font-weight: 600;
   border: none;
@@ -273,7 +277,7 @@ a { text-decoration: none; color: inherit; }
 .input-wrap input {
   width: 100%;
   padding: 11px 12px 11px 38px;
-  font-family: 'Jost', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -359,7 +363,7 @@ a { text-decoration: none; color: inherit; }
   padding: 13px;
   background: linear-gradient(135deg, var(--blue-mid), var(--blue));
   color: white;
-  font-family: 'Jost', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 15px;
   font-weight: 700;
   border: none;
@@ -381,7 +385,7 @@ a { text-decoration: none; color: inherit; }
 }
 .switch-form-btn {
   background: none; border: none;
-  font-family: 'Jost', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: var(--blue-mid);

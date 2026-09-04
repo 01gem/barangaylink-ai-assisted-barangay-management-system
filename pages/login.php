@@ -10,17 +10,17 @@ function clean_input($value) {
   return trim((string)$value);
 }
 
-function verify_user_login($db, $table, $email, $password, &$error) {
+function verify_user_login($db, $table, $identifier, $password, &$error) {
   $selectSql = $table === 'barangay_officials'
-    ? 'SELECT password FROM barangay_officials WHERE email = ? LIMIT 1'
-    : 'SELECT password FROM residents WHERE email = ? LIMIT 1';
+    ? 'SELECT password FROM barangay_officials WHERE username = ? LIMIT 1'
+    : 'SELECT password FROM residents WHERE username = ? LIMIT 1';
 
   $stmt = $db->prepare($selectSql);
   if (!$stmt) {
     $error = 'Unable to verify login at this time.';
     return false;
   }
-  $stmt->bind_param('s', $email);
+  $stmt->bind_param('s', $identifier);
   $stmt->execute();
   $stored = null;
   $stmt->bind_result($stored);
@@ -33,14 +33,14 @@ function verify_user_login($db, $table, $email, $password, &$error) {
     if ($stored !== null && $stored !== '' && hash_equals($stored, $password)) {
       $newHash = password_hash($password, PASSWORD_DEFAULT);
       $updateSql = $table === 'barangay_officials'
-        ? 'UPDATE barangay_officials SET password = ? WHERE email = ?'
-        : 'UPDATE residents SET password = ? WHERE email = ?';
+        ? 'UPDATE barangay_officials SET password = ? WHERE username = ?'
+        : 'UPDATE residents SET password = ? WHERE username = ?';
       $update = $db->prepare($updateSql);
       if (!$update) {
         $error = 'Password upgrade failed. Please reset your password.';
         return false;
       }
-      $update->bind_param('ss', $newHash, $email);
+      $update->bind_param('ss', $newHash, $identifier);
       try {
         if (!$update->execute()) {
           $error = 'Password upgrade failed: ' . $update->error;
@@ -68,25 +68,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if ($action === 'resident-login') {
     $activeTab = 'resident-login';
-    $email = clean_input($_POST['email'] ?? '');
+    $username = clean_input($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if ($email === '' || $password === '') {
-      $errors[] = 'Please enter your resident email and password.';
+    if ($username === '' || $password === '') {
+      $errors[] = 'Please enter your resident username and password.';
     } else {
       $loginError = '';
-      if (verify_user_login($db, 'residents', $email, $password, $loginError)) {
+      if (verify_user_login($db, 'residents', $username, $password, $loginError)) {
         session_regenerate_id(true);
         $_SESSION = [];
         // Load resident details and store in session
-        $stmt = $db->prepare('SELECT id, fname, lname, email FROM residents WHERE email = ? LIMIT 1');
+        $stmt = $db->prepare('SELECT id, fname, lname, username FROM residents WHERE username = ? LIMIT 1');
         if ($stmt) {
-          $stmt->bind_param('s', $email);
+          $stmt->bind_param('s', $username);
           $stmt->execute();
-          $stmt->bind_result($rid, $rfname, $rlname, $remail);
+          $stmt->bind_result($rid, $rfname, $rlname, $rusername);
           if ($stmt->fetch()) {
             $_SESSION['resident_id'] = (int)$rid;
-            $_SESSION['resident_email'] = $remail;
+            $_SESSION['resident_username'] = $rusername;
             $_SESSION['resident_name'] = trim($rfname . ' ' . $rlname);
           }
           $stmt->close();
@@ -94,37 +94,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: resident.php');
         exit;
       }
-      $errors[] = $loginError !== '' ? $loginError : 'Invalid resident email or password.';
+      $errors[] = $loginError !== '' ? $loginError : 'Invalid resident username or password.';
     }
   } elseif ($action === 'official-login') {
     $activeTab = 'official-login';
-    $email = clean_input($_POST['email'] ?? '');
+    $username = clean_input($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if ($email === '' || $password === '') {
-      $errors[] = 'Please enter your official email and password.';
+    if ($username === '' || $password === '') {
+      $errors[] = 'Please enter your official username and password.';
     } else {
       $loginError = '';
-      if (verify_user_login($db, 'barangay_officials', $email, $password, $loginError)) {
-        session_regenerate_id(true);
-        $_SESSION = [];
-        // Store official session info
-        $stmt = $db->prepare('SELECT id, fname, lname, email FROM barangay_officials WHERE email = ? LIMIT 1');
+      if (verify_user_login($db, 'barangay_officials', $username, $password, $loginError)) {
+        $stmt = $db->prepare('SELECT id, fname, lname, role, status FROM barangay_officials WHERE username = ? LIMIT 1');
         if ($stmt) {
-          $stmt->bind_param('s', $email);
+          $stmt->bind_param('s', $username);
           $stmt->execute();
-          $stmt->bind_result($oid, $ofname, $olname, $oemail);
-          if ($stmt->fetch()) {
-            $_SESSION['official_id'] = (int)$oid;
-            $_SESSION['official_email'] = $oemail;
-            $_SESSION['official_name'] = trim($ofname . ' ' . $olname);
-          }
+          $stmt->bind_result($oid, $ofname, $olname, $orole, $ostatus);
+          $fetched = $stmt->fetch();
           $stmt->close();
+          if ($fetched && (string)$ostatus === 'inactive') {
+            $errors[] = 'This official account is inactive. Contact a barangay administrator.';
+          } elseif ($fetched) {
+            session_regenerate_id(true);
+            $_SESSION = [];
+            $_SESSION['official_id'] = (int)$oid;
+            $_SESSION['official_name'] = trim($ofname . ' ' . $olname);
+            $_SESSION['official_role'] = (string)$orole;
+            header('Location: official.php');
+            exit;
+          } else {
+            $errors[] = 'Invalid official username or password.';
+          }
+        } else {
+          $errors[] = 'Unable to complete official login at this time.';
         }
-        header('Location: official.php');
-        exit;
+      } else {
+        $errors[] = $loginError !== '' ? $loginError : 'Invalid official username or password.';
       }
-      $errors[] = $loginError !== '' ? $loginError : 'Invalid official email or password.';
     }
   } else {
     $errors[] = 'Invalid form submission.';
@@ -141,9 +148,10 @@ function e($value) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BarangayLink — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/login.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -239,10 +247,10 @@ function e($value) {
           <form class="auth-form" id="residentLoginFormEl" method="post" action="login.php">
             <input type="hidden" name="action" value="resident-login" />
             <div class="field">
-              <label>Email Address</label>
+              <label>Username</label>
               <div class="input-wrap">
-                <i class="fa-solid fa-envelope"></i>
-                <input type="email" name="email" placeholder="your@email.com" required />
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="username" placeholder="Enter your username" required />
               </div>
             </div>
             <div class="field">
@@ -274,10 +282,10 @@ function e($value) {
           <form class="auth-form" id="officialLoginFormEl" method="post" action="login.php">
             <input type="hidden" name="action" value="official-login" />
             <div class="field">
-              <label>Official Email</label>
+              <label>Username</label>
               <div class="input-wrap">
-                <i class="fa-solid fa-envelope"></i>
-                <input type="email" name="email" placeholder="official@barangay.gov.ph" required />
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="username" placeholder="Enter your username" required />
               </div>
             </div>
             <div class="field">
@@ -298,9 +306,6 @@ function e($value) {
             <div class="notice-box">
               <i class="fa-solid fa-circle-info"></i>
               This portal is restricted to authorized barangay officials.
-            </div>
-            <div class="form-footer">
-              <p>New official? <a href="official_register.php">Register here</a></p>
             </div>
           </form>
         </div>

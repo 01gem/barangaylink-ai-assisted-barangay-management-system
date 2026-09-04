@@ -9,12 +9,15 @@ if (empty($_SESSION['resident_id'])) {
 }
 
 $db = get_db();
+$residentId = (int)$_SESSION['resident_id'];
 
 $sql = "SELECT id, title, body, is_read, created_at
         FROM notifications
+        WHERE resident_id = ?
         ORDER BY id DESC";
 $stmt = $db->prepare($sql);
 if (!$stmt) json_error('Failed to prepare notifications query.', 500);
+$stmt->bind_param('i', $residentId);
 $rows = db_query_all($stmt);
 $stmt->close();
 

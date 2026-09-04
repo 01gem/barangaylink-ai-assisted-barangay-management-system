@@ -38,5 +38,14 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
+log_audit(
+  $db,
+  isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+  (string)($_SESSION['official_name'] ?? ''),
+  'Updated announcement',
+  'announcement',
+  $title
+);
+
 json_success(['message' => 'Announcement updated successfully.']);
 ?>

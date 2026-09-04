@@ -4,9 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BarangayLink — Barangay Sampaguita</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/visitor.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -118,7 +119,7 @@
       <p>Residents can log in to request certificates and track complaints. New resident accounts are created only by authorized barangay officials.</p>
       <div class="cta-btns">
         <a href="pages/login.php" class="btn-cta-main">Resident Log In</a>
-        <a href="pages/official_register.php" class="btn-cta-ghost">Official Registration</a>
+        <a href="pages/login.php#official" class="btn-cta-ghost">Official Log In</a>
       </div>
     </div>
   </section>

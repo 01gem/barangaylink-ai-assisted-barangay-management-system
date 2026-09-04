@@ -26,7 +26,7 @@ if (!in_array($newStatus, $allowed, true)) {
 }
 
 try {
-  $stmt = $db->prepare("SELECT id, status FROM document_requests WHERE reference_no = ? LIMIT 1");
+  $stmt = $db->prepare("SELECT id, status, resident_id, reference_no FROM document_requests WHERE reference_no = ? LIMIT 1");
   if (!$stmt) json_error('Failed to prepare lookup.', 500);
   $stmt->bind_param('s', $referenceNo);
   $rows = db_query_all($stmt);
@@ -40,6 +40,33 @@ try {
   $up->bind_param('si', $newStatus, $rid);
   if (!$up->execute()) json_error('Failed to update status: ' . $up->error, 500);
   $up->close();
+
+  $residentId = (int)($req['resident_id'] ?? 0);
+  if ($residentId > 0) {
+    $title = 'Document Request Update';
+    $statusText = $newStatus === 'ready' ? 'ready for pickup' : $newStatus;
+    $body = "Your request {$req['reference_no']} is now {$statusText}.";
+    $createdAt = date('Y-m-d H:i:s');
+    $isRead = 0;
+
+    $notify = $db->prepare('INSERT INTO notifications (resident_id, title, body, is_read, created_at) VALUES (?, ?, ?, ?, ?)');
+    if (!$notify) json_error('Failed to prepare notification insert.', 500);
+    $notify->bind_param('issis', $residentId, $title, $body, $isRead, $createdAt);
+    if (!$notify->execute()) {
+      json_error('Failed to create notification: ' . $notify->error, 500);
+    }
+    $notify->close();
+  }
+
+  log_audit(
+    $db,
+    isset($_SESSION['official_id']) ? (int)$_SESSION['official_id'] : null,
+    (string)($_SESSION['official_name'] ?? ''),
+    'Updated document request status',
+    'document_request',
+    (string)$req['reference_no'],
+    "New status: {$newStatus}"
+  );
 } catch (mysqli_sql_exception $e) {
   json_error('Database error while updating status.', 500);
 }
