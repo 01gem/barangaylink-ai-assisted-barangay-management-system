@@ -110,6 +110,12 @@ CREATE TABLE IF NOT EXISTS `local_services` (
   FOREIGN KEY (`posted_by`) REFERENCES `barangay_officials`(`id`)
 );
 
+INSERT INTO `barangay_officials` (`id`, `fname`, `lname`, `username`, `role`, `address`,
+ `contact`, `password`, `position`, `status`, `created_at`) VALUES (NULL, 'Gem', 'Dulduco',
+  'gem', 'admin', 'Purok 2, Barangay Sampaguita', '09060312740', 'gemgem', 'Barangay Captain',
+   'active', CURRENT_TIMESTAMP
+);
+
 -- Example manual insert for barangay officials (password must be pre-hashed in PHP using password_hash):
 -- INSERT INTO `barangay_officials` (`fname`, `lname`, `username`, `role`, `address`, `contact`, `password`, `position`, `status`)
 -- VALUES ('Juan', 'Dela Cruz', 'jdelacruz', 'admin', 'Purok 1, Barangay Sampaguita, Tagana-an, Surigao del Norte', '09171234567', '<password_hash_here>', 'Barangay Captain', 'active');
