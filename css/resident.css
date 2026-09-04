@@ -258,6 +258,7 @@ body.sidebar-collapsed .slider-container {
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; color: white;
 }
+.resident-header-photo { object-fit: cover; }
 .logout-btn {
   padding: 6px 10px; font-size: 14px;
   color: var(--text-3); border: 1.5px solid var(--border);
@@ -520,6 +521,11 @@ textarea.form-input { resize: vertical; line-height: 1.6; }
   font-size: 24px; font-weight: 700; color: white;
   margin: 0 auto 14px;
 }
+.profile-photo { object-fit: cover; }
+.profile-photo-form { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 14px; }
+.profile-photo-form label { cursor: pointer; }
+.profile-photo-form small { color: var(--text-3); font-size: 11px; }
+.profile-readonly { min-height: 38px; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-2); font-size: 13px; }
 .profile-name-big { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--text); }
 .profile-role-badge {
   display: inline-flex; align-items: center; gap: 6px;

@@ -1,11 +1,7 @@
 <?php
 require_once __DIR__ . '/../common.php';
 session_start();
-if (empty($_SESSION['official_id'])) {
-  http_response_code(401);
-  echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-  exit;
-}
+require_official_admin();
 
 require_post();
 $db = get_db();

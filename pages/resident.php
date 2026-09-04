@@ -1,11 +1,32 @@
 <?php
+require_once __DIR__ . '/../db.php';
 session_start();
 if (empty($_SESSION['resident_id'])) {
   header('Location: login.php');
   exit;
 }
+$residentId = (int)$_SESSION['resident_id'];
 $residentName = $_SESSION['resident_name'] ?? 'Resident User';
 $residentUsername = $_SESSION['resident_username'] ?? '';
+$residentProfile = ['fname' => '', 'lname' => '', 'address' => '', 'contact' => '', 'username' => $residentUsername, 'profile_photo' => null];
+$db = get_db();
+$profileStmt = $db->prepare('SELECT fname, lname, address, contact, username, profile_photo FROM residents WHERE id = ? LIMIT 1');
+if ($profileStmt) {
+  $profileStmt->bind_param('i', $residentId);
+  $profileStmt->execute();
+  $profileResult = $profileStmt->get_result();
+  if ($profileResult && ($profileRow = $profileResult->fetch_assoc())) {
+    $residentProfile = array_merge($residentProfile, $profileRow);
+    $residentName = trim($profileRow['fname'] . ' ' . $profileRow['lname']);
+    $residentUsername = $profileRow['username'];
+  }
+  $profileStmt->close();
+}
+$residentParts = preg_split('/\s+/', trim($residentName), -1, PREG_SPLIT_NO_EMPTY);
+$residentInitials = count($residentParts) >= 2
+  ? strtoupper(substr($residentParts[0], 0, 1) . substr($residentParts[count($residentParts) - 1], 0, 1))
+  : strtoupper(substr($residentParts[0] ?? 'R', 0, 2));
+$residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($residentProfile['profile_photo'], '/') : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -34,7 +55,11 @@ $residentUsername = $_SESSION['resident_username'] ?? '';
       </button>
     </div>
     <div class="sidebar-user">
-      <div class="user-avatar"><?php echo strtoupper(substr(trim($residentName),0,2)); ?></div>
+      <?php if ($residentPhotoUrl !== ''): ?>
+        <img class="user-avatar resident-header-photo" src="<?= htmlspecialchars($residentPhotoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Profile photo" />
+      <?php else: ?>
+        <div class="user-avatar"><?= htmlspecialchars($residentInitials, ENT_QUOTES, 'UTF-8') ?></div>
+      <?php endif; ?>
       <div class="user-info">
         <span class="user-name"><?php echo htmlspecialchars($residentName, ENT_QUOTES, 'UTF-8'); ?></span>
         <span class="user-role"><i class="fa-solid fa-circle-check"></i> Verified Resident</span>
@@ -76,7 +101,11 @@ $residentUsername = $_SESSION['resident_username'] ?? '';
           <span class="notif-dot" id="notifDot"></span>
         </button>
         <div class="topbar-user">
-          <div class="tu-avatar"><?php echo strtoupper(substr(trim($residentName),0,2)); ?></div>
+          <?php if ($residentPhotoUrl !== ''): ?>
+            <img class="tu-avatar resident-header-photo" src="<?= htmlspecialchars($residentPhotoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Profile photo" />
+          <?php else: ?>
+            <div class="tu-avatar"><?= htmlspecialchars($residentInitials, ENT_QUOTES, 'UTF-8') ?></div>
+          <?php endif; ?>
           <span><?php echo htmlspecialchars($residentName, ENT_QUOTES, 'UTF-8'); ?></span>
           <a href="../logout.php" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i></a>
         </div>
@@ -261,27 +290,33 @@ $residentUsername = $_SESSION['resident_username'] ?? '';
         <div class="tab-header"><h2>My Profile</h2></div>
         <div class="profile-grid">
           <div class="card profile-card">
-            <div class="profile-avatar-big">RU</div>
-            <div class="profile-name-big">Resident User</div>
+            <?php if ($residentPhotoUrl !== ''): ?>
+              <img class="profile-avatar-big profile-photo" src="<?= htmlspecialchars($residentPhotoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Profile photo" />
+            <?php else: ?>
+              <div class="profile-avatar-big"><?= htmlspecialchars($residentInitials, ENT_QUOTES, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <div class="profile-name-big"><?= htmlspecialchars($residentName, ENT_QUOTES, 'UTF-8') ?></div>
             <div class="profile-role-badge"><i class="fa-solid fa-circle-check"></i> Verified Resident</div>
             <div class="profile-since">Member since —</div>
+            <form id="profilePhotoForm" class="profile-photo-form" enctype="multipart/form-data">
+              <label for="profilePhotoInput" class="btn-submit-form">Change Photo</label>
+              <input id="profilePhotoInput" type="file" name="photo" accept="image/jpeg,image/png" hidden />
+              <small>JPEG or PNG, maximum 2MB</small>
+            </form>
           </div>
           <div class="card">
             <h3 class="card-section-title">Personal Information</h3>
-            <form class="profile-form" id="profileForm">
+            <div class="profile-form">
               <div class="form-2col">
-                <div class="field"><label>First Name</label><input type="text" class="form-input" value="" /></div>
-                <div class="field"><label>Last Name</label><input type="text" class="form-input" value="" /></div>
+                <div class="field"><label>First Name</label><div class="profile-readonly"><?= htmlspecialchars($residentProfile['fname'], ENT_QUOTES, 'UTF-8') ?></div></div>
+                <div class="field"><label>Last Name</label><div class="profile-readonly"><?= htmlspecialchars($residentProfile['lname'], ENT_QUOTES, 'UTF-8') ?></div></div>
               </div>
               <div class="form-2col">
-                <div class="field"><label>Username</label><input type="text" class="form-input" value="" /></div>
-                <div class="field"><label>Mobile</label><input type="tel" class="form-input" value="" /></div>
+                <div class="field"><label>Username</label><div class="profile-readonly"><?= htmlspecialchars($residentProfile['username'], ENT_QUOTES, 'UTF-8') ?></div></div>
+                <div class="field"><label>Mobile</label><div class="profile-readonly"><?= htmlspecialchars($residentProfile['contact'], ENT_QUOTES, 'UTF-8') ?></div></div>
               </div>
-              <div class="field"><label>Home Address</label><input type="text" class="form-input" value="" /></div>
-              <div class="form-actions" style="margin-top:6px;">
-                <button type="button" class="btn-submit-form" onclick="alert('Profile update saved! (Prototype demo)')">Save Changes</button>
-              </div>
-            </form>
+              <div class="field"><label>Home Address</label><div class="profile-readonly"><?= htmlspecialchars($residentProfile['address'], ENT_QUOTES, 'UTF-8') ?></div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -300,9 +335,9 @@ $residentUsername = $_SESSION['resident_username'] ?? '';
   <div class="drawer-overlay" id="drawerOverlay"></div>
 
   <script>
-    window.RESIDENT_ID = <?php echo json_encode((int)($_SESSION['resident_id'] ?? 0)); ?>;
-    window.RESIDENT_USERNAME = <?php echo json_encode($_SESSION['resident_username'] ?? ''); ?>;
-    window.RESIDENT_NAME = <?php echo json_encode($_SESSION['resident_name'] ?? 'Resident User'); ?>;
+    window.RESIDENT_ID = <?php echo json_encode($residentId); ?>;
+    window.RESIDENT_USERNAME = <?php echo json_encode($residentUsername); ?>;
+    window.RESIDENT_NAME = <?php echo json_encode($residentName); ?>;
   </script>
   <script src="../js/resident.js"></script>
 </body>

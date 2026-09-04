@@ -12,6 +12,30 @@ function getAllAnnouncements() {
 
 let SERVICES = [];
 
+async function loadLandingStats() {
+  try {
+    const response = await fetch('api/stats/landing.php');
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Unable to load landing statistics.');
+    }
+    const values = {
+      registered_residents: `${data.registered_residents}`,
+      verified_local_services: `${data.verified_local_services}`,
+      request_fulfillment_rate: `${data.request_fulfillment_rate}%`,
+      avg_response_time_minutes: `${data.avg_response_time_minutes} min`
+    };
+    document.querySelectorAll('[data-landing-stat]').forEach((element) => {
+      const key = element.dataset.landingStat;
+      if (Object.prototype.hasOwnProperty.call(values, key)) {
+        element.textContent = values[key];
+      }
+    });
+  } catch (err) {
+    // Keep the existing static placeholders if the public stats request fails.
+  }
+}
+
 // ── RENDER ANNOUNCEMENTS ──────────────────
 function renderAnnouncements() {
   const grid = document.getElementById('announceGrid');
@@ -140,6 +164,7 @@ function initNavLinks() {
 
 // ── INIT ───────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  loadLandingStats();
   loadAnnouncements();
   loadServices();
   initNavbar();

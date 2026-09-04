@@ -13,17 +13,30 @@ require_post();
 $input = read_json_input();
 $title = trim((string)($input['title'] ?? ''));
 $content = trim((string)($input['content'] ?? ''));
+$expiresAt = trim((string)($input['expires_at'] ?? ''));
 $isPinned = !empty($input['is_pinned']) ? 1 : 0;
 
 if ($title === '' || $content === '') {
   json_error('Title and content are required.');
 }
+if ($expiresAt !== '') {
+  $parsedExpiry = DateTime::createFromFormat('Y-m-d\TH:i', $expiresAt)
+    ?: DateTime::createFromFormat('Y-m-d H:i:s', $expiresAt)
+    ?: DateTime::createFromFormat('Y-m-d H:i', $expiresAt);
+  $dateErrors = DateTime::getLastErrors();
+  if (!$parsedExpiry || ($dateErrors !== false && array_sum($dateErrors) > 0)) {
+    json_error('Expiration date and time is invalid.');
+  }
+  $expiresAt = $parsedExpiry->format('Y-m-d H:i:s');
+} else {
+  $expiresAt = null;
+}
 
 $db = get_db();
 $postedBy = (int)$_SESSION['official_id'];
-$stmt = $db->prepare('INSERT INTO announcements (title, content, is_pinned, posted_by) VALUES (?, ?, ?, ?)');
+$stmt = $db->prepare('INSERT INTO announcements (title, content, expires_at, is_pinned, posted_by) VALUES (?, ?, ?, ?, ?)');
 if (!$stmt) json_error('Failed to prepare announcement insert.', 500);
-$stmt->bind_param('ssii', $title, $content, $isPinned, $postedBy);
+$stmt->bind_param('sssii', $title, $content, $expiresAt, $isPinned, $postedBy);
 if (!$stmt->execute()) {
   json_error('Failed to create announcement: ' . $stmt->error, 500);
 }

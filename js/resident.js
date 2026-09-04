@@ -452,6 +452,28 @@ async function submitComplaint(formEl, form) {
 
 // ── TOAST ─────────────────────────────────
 let toastTimeout;
+function initProfilePhotoUpload() {
+  const form = document.getElementById('profilePhotoForm');
+  const input = document.getElementById('profilePhotoInput');
+  if (!form || !input) return;
+  input.addEventListener('change', async () => {
+    if (!input.files || !input.files[0]) return;
+    const body = new FormData();
+    body.append('photo', input.files[0]);
+    try {
+      const response = await fetch('../api/residents/upload_photo.php', { method: 'POST', body });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || 'Photo upload failed.');
+      showToast('Profile Photo Updated', 'Your profile photo was updated.');
+      window.location.reload();
+    } catch (error) {
+      showToast('Upload Failed', error.message);
+    } finally {
+      input.value = '';
+    }
+  });
+}
+
 function showToast(title, body) {
   let toast = document.getElementById('residentToast');
   if (!toast) {
@@ -466,6 +488,7 @@ function showToast(title, body) {
     `;
     document.body.appendChild(toast);
   }
+
   toast.innerHTML = `
     <i class="fa-solid fa-circle-check" style="color:#059669; font-size:20px; margin-top:2px; flex-shrink:0;"></i>
     <div><div style="font-size:14px;font-weight:700;color:#0B1E45;margin-bottom:3px">${title}</div><div style="font-size:13px;color:#475569">${body}</div></div>
@@ -491,6 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initReqFormToggle();
   initComplaintFormToggle();
   initNotifDrawer();
+  initProfilePhotoUpload();
   (async () => {
     try {
       await Promise.all([loadRequests(), loadComplaints(), loadNotifications()]);

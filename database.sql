@@ -10,6 +10,27 @@ CREATE TABLE IF NOT EXISTS `residents` (
   `address` varchar(100) NOT NULL,
   `contact` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
+Remove click-outside-to-close (backdrop click dismissal) behavior from all modals in 
+the official dashboard, since accidental clicks near the edge of a modal shouldn't 
+discard in-progress form data. Keep the X (close) button and any Cancel button fully 
+functional — only remove the backdrop-click handler.
+
+Before making changes, inspect js/official.js for every place a click event listener 
+is attached to a modal overlay/backdrop element (from the recent modal consistency 
+work: Post Announcement, Add Resident, Add Service, Add Official, Document Generation 
+modal, and the Action/details modal).
+
+Do not change any other modal behavior — open triggers, close button handlers, form 
+submission, or styling should remain exactly as they are. Only remove the 
+overlay-click-to-close listener(s).
+
+Apply this consistently across every modal in the project, not just the four fixed in 
+the last pass — check the document generation modal and action/details modal too, 
+since they were confirmed to already use the shared backdrop pattern and may have the 
+same click-to-close behavior.
+
+After implementing, show me a diff or summary of every file changed, and confirm which 
+modals had this behavior removed.  `profile_photo` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
@@ -102,6 +123,7 @@ CREATE TABLE IF NOT EXISTS `announcements` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
   `content` TEXT NOT NULL,
+  `expires_at` DATETIME NULL,
   `is_pinned` TINYINT(1) DEFAULT 0,
   `posted_by` INT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

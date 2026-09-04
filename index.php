@@ -77,13 +77,13 @@
   </section>
 
   <div class="stats-bar">
-    <div class="stat-item"><span class="sn">0</span><span class="sl">Registered Residents</span></div>
+    <div class="stat-item"><span class="sn" data-landing-stat="registered_residents">0</span><span class="sl">Registered Residents</span></div>
     <div class="stat-sep"></div>
-    <div class="stat-item"><span class="sn">0</span><span class="sl">Verified Local Services</span></div>
+    <div class="stat-item"><span class="sn" data-landing-stat="verified_local_services">0</span><span class="sl">Verified Local Services</span></div>
     <div class="stat-sep"></div>
-    <div class="stat-item"><span class="sn">0%</span><span class="sl">Request Fulfillment Rate</span></div>
+    <div class="stat-item"><span class="sn" data-landing-stat="request_fulfillment_rate">0%</span><span class="sl">Request Fulfillment Rate</span></div>
     <div class="stat-sep"></div>
-    <div class="stat-item"><span class="sn">0 min</span><span class="sl">Avg. Response Time</span></div>
+    <div class="stat-item"><span class="sn" data-landing-stat="avg_response_time_minutes">0 min</span><span class="sl">Avg. Response Time</span></div>
   </div>
 
   <section class="section" id="announcements">

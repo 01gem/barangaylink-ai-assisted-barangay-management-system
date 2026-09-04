@@ -204,7 +204,10 @@ function renderResidents(data) {
   tbody.innerHTML = data.map(r => `
     <tr>
       <td><code style="font-size:12px;color:var(--blue-mid)">${r.id}</code></td>
-      <td style="font-weight:600;color:var(--text)">${r.name}</td>
+      <td style="font-weight:600;color:var(--text)">
+        ${r.profilePhoto ? `<img class="resident-photo-thumb" src="../${escapeAttribute(r.profilePhoto)}" alt="" />` : `<span class="resident-initials-thumb">${escapeAttribute(getInitials(r.name))}</span>`}
+        ${escapeAttribute(r.name)}
+      </td>
       <td>${r.addr}</td>
       <td>${r.contact}</td>
       <td><span class="status-badge status-${r.status}">${r.status}</span></td>
@@ -543,8 +546,15 @@ function mapResidentRow(row) {
     addr: row.address || '-',
     contact: row.contact || '-',
     username: row.username || '',
+    profilePhoto: row.profile_photo || '',
     status: 'verified'
   };
+}
+
+function getInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return (parts[0] || 'R').slice(0, 2).toUpperCase();
 }
 
 function mapAuditRow(row) {
@@ -664,14 +674,15 @@ function initResidentCreateForm() {
     passwordInput.placeholder = '';
   };
   const closeForm = () => {
-    card.style.display = 'none';
+    card.classList.remove('show');
     resetToCreateMode();
   };
 
   openBtn?.addEventListener('click', () => {
     resetToCreateMode();
-    card.style.display = 'block';
+    card.classList.add('show');
   });
+  card.addEventListener('click', event => { if (event.target === card) closeForm(); });
   closeBtn?.addEventListener('click', closeForm);
   cancelBtn?.addEventListener('click', closeForm);
 
@@ -722,7 +733,7 @@ function openEditResidentForm(dbId) {
   title.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Resident';
   submitBtn.textContent = 'Update Resident';
   passwordLabel.textContent = 'New Password (optional)';
-  card.style.display = 'block';
+  card.classList.add('show');
 }
 
 async function deleteResident(dbId) {
@@ -831,14 +842,15 @@ function initOfficialsSection() {
     passwordInput.placeholder = '';
   };
   const closeForm = () => {
-    card.style.display = 'none';
+    card.classList.remove('show');
     resetToCreateMode();
   };
 
   openBtn?.addEventListener('click', () => {
     resetToCreateMode();
-    card.style.display = 'block';
+    card.classList.add('show');
   });
+  card.addEventListener('click', event => { if (event.target === card) closeForm(); });
   closeBtn?.addEventListener('click', closeForm);
   cancelBtn?.addEventListener('click', closeForm);
   document.getElementById('officialSearch')?.addEventListener('input', filterOfficials);
@@ -889,7 +901,7 @@ function openEditOfficialForm(dbId) {
   title.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Official';
   submitBtn.textContent = 'Update Official';
   passwordLabel.textContent = 'New Password (optional)';
-  card.style.display = 'block';
+  card.classList.add('show');
 }
 
 async function toggleOfficialStatus(dbId) {
@@ -942,6 +954,7 @@ function renderAnnouncementsAdmin() {
         <div class="aai-meta">
           <span><i class="fa-regular fa-calendar"></i> ${formatAnnouncementDate(a.created_at)}</span>
           ${Number(a.is_pinned) === 1 ? '<span style="color:#1976D2"><i class="fa-solid fa-thumbtack"></i> Pinned</span>' : ''}
+          ${Number(a.is_expired) === 1 ? '<span class="aai-expired">Expired</span>' : ''}
         </div>
         <div class="aai-content">${truncateAnnouncementContent(a.content)}</div>
       </div>
@@ -965,23 +978,27 @@ function formatAnnouncementDate(value) {
   });
 }
 async function loadAnnouncements() {
-  const data = await fetchJson(`${API_BASE}/announcements/list.php`);
+  const data = await fetchJson(`${API_BASE}/announcements/list.php`, { headers: { 'X-Portal-Source': 'official' } });
   ANNOUNCEMENTS_DATA = data.announcements || [];
   renderAnnouncementsAdmin();
 }
 function initAnnouncementForm() {
-  document.getElementById('newAnnBtn')?.addEventListener('click', () => { document.getElementById('annForm').style.display='block'; });
-  document.getElementById('closeAnnForm')?.addEventListener('click', () => { document.getElementById('annForm').style.display='none'; });
-  document.getElementById('cancelAnnForm')?.addEventListener('click', () => { document.getElementById('annForm').style.display='none'; });
+  const modal = document.getElementById('annForm');
+  const closeForm = () => { modal?.classList.remove('show'); };
+  document.getElementById('newAnnBtn')?.addEventListener('click', () => modal?.classList.add('show'));
+  document.getElementById('closeAnnForm')?.addEventListener('click', closeForm);
+  document.getElementById('cancelAnnForm')?.addEventListener('click', closeForm);
+  modal?.addEventListener('click', event => { if (event.target === modal) closeForm(); });
   document.getElementById('annFormEl')?.addEventListener('submit', async e => {
     e.preventDefault();
     const title = e.target.querySelector('input[type=text]').value.trim();
     const content = e.target.querySelector('textarea').value.trim();
+    const expiresAt = document.getElementById('announcementExpiresAt')?.value || '';
     try {
       const created = await fetchJson(`${API_BASE}/announcements/create.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, is_pinned: 0 })
+        body: JSON.stringify({ title, content, expires_at: expiresAt, is_pinned: 0 })
       });
       const shouldNotify = document.getElementById('smsToggle')?.checked;
       let broadcastResult = null;
@@ -1006,7 +1023,7 @@ function initAnnouncementForm() {
       }
       await loadAnnouncements();
       await loadAuditLog();
-      document.getElementById('annForm').style.display='none';
+      closeForm();
       e.target.reset();
       if (broadcastResult) {
         showToastAdmin(
@@ -1028,11 +1045,13 @@ async function editAnnouncement(id) {
   if (title === null) return;
   const content = window.prompt('Announcement content:', announcement.content);
   if (content === null) return;
+  const expiresAt = window.prompt('Expiration date/time (YYYY-MM-DD HH:MM), or leave blank for permanent:', announcement.expires_at || '');
+  if (expiresAt === null) return;
   try {
     await fetchJson(`${API_BASE}/announcements/update.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, title, content, is_pinned: Number(announcement.is_pinned) === 1 })
+      body: JSON.stringify({ id, title, content, expires_at: expiresAt, is_pinned: Number(announcement.is_pinned) === 1 })
     });
     await loadAnnouncements();
     await loadAuditLog();
@@ -1056,6 +1075,7 @@ async function toggleAnnouncementPin(id) {
         id,
         title: announcement.title,
         content: announcement.content,
+        expires_at: announcement.expires_at || '',
         is_pinned: Number(announcement.is_pinned) !== 1
       })
     });
@@ -1134,12 +1154,15 @@ function showServiceForm(service = null) {
       form.elements[field].value = service[field] || '';
     });
   }
-  document.getElementById('serviceForm').style.display = 'block';
+  document.getElementById('serviceForm').classList.add('show');
 }
 function initServiceForm() {
   document.getElementById('newServiceBtn')?.addEventListener('click', () => showServiceForm());
-  document.getElementById('closeServiceForm')?.addEventListener('click', () => { document.getElementById('serviceForm').style.display = 'none'; });
-  document.getElementById('cancelServiceForm')?.addEventListener('click', () => { document.getElementById('serviceForm').style.display = 'none'; });
+  const modal = document.getElementById('serviceForm');
+  const closeForm = () => modal?.classList.remove('show');
+  document.getElementById('closeServiceForm')?.addEventListener('click', closeForm);
+  document.getElementById('cancelServiceForm')?.addEventListener('click', closeForm);
+  modal?.addEventListener('click', event => { if (event.target === modal) closeForm(); });
   document.getElementById('serviceFormEl')?.addEventListener('submit', async event => {
     event.preventDefault();
     const payload = Object.fromEntries(new FormData(event.target).entries());
@@ -1152,7 +1175,7 @@ function initServiceForm() {
       });
       await loadServices();
       await loadAuditLog();
-      document.getElementById('serviceForm').style.display = 'none';
+      closeForm();
       resetServiceForm();
       showToastAdmin(isEdit ? 'Service Updated' : 'Service Added', 'Local service saved successfully.');
     } catch (err) {

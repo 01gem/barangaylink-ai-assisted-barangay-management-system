@@ -124,12 +124,13 @@ if (count($officialNameParts) >= 2) {
           <h2>Resident Management</h2>
           <button class="btn-primary-action" id="addResidentBtn"><i class="fa-solid fa-plus"></i> Add Resident</button>
         </div>
-        <div class="card form-card" id="residentFormCard" style="display:none;">
-          <div class="form-card-header">
-            <h3 id="residentFormTitle"><i class="fa-solid fa-user-plus"></i> Add New Resident</h3>
-            <button class="close-card-btn" id="closeResidentForm"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <form id="residentFormEl">
+        <div class="modal-overlay form-modal-overlay" id="residentFormCard">
+          <div class="modal-box form-card">
+            <div class="form-card-header">
+              <h3 id="residentFormTitle"><i class="fa-solid fa-user-plus"></i> Add New Resident</h3>
+              <button class="close-card-btn" id="closeResidentForm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="residentFormEl">
             <input type="hidden" name="resident_id" />
             <div class="form-2col">
               <div class="field"><label>First Name</label><input type="text" name="fname" class="form-input" required /></div>
@@ -145,7 +146,8 @@ if (count($officialNameParts) >= 2) {
               <button type="submit" class="btn-submit-form" id="residentFormSubmitBtn">Save Resident</button>
               <button type="button" class="btn-cancel-form" id="cancelResidentForm">Cancel</button>
             </div>
-          </form>
+            </form>
+          </div>
         </div>
         <div class="card">
           <div class="table-toolbar">
@@ -212,12 +214,13 @@ if (count($officialNameParts) >= 2) {
           <h2>Announcements</h2>
           <button class="btn-primary-action" id="newAnnBtn"><i class="fa-solid fa-plus"></i> Post Announcement</button>
         </div>
-        <div class="card form-card" id="annForm" style="display:none;">
-          <div class="form-card-header">
-            <h3><i class="fa-solid fa-bullhorn"></i> New Announcement</h3>
-            <button class="close-card-btn" id="closeAnnForm"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <form id="annFormEl">
+        <div class="modal-overlay form-modal-overlay" id="annForm">
+          <div class="modal-box form-card">
+            <div class="form-card-header">
+              <h3><i class="fa-solid fa-bullhorn"></i> New Announcement</h3>
+              <button class="close-card-btn" id="closeAnnForm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="annFormEl">
             <div class="form-2col">
               <div class="field"><label>Title</label><input type="text" class="form-input" placeholder="Announcement title" required /></div>
               <div class="field"><label>Category</label>
@@ -227,12 +230,14 @@ if (count($officialNameParts) >= 2) {
               </div>
             </div>
             <div class="field" style="margin-top:12px;"><label>Content</label><textarea class="form-input" rows="5" placeholder="Write the announcement content here…" required></textarea></div>
+            <div class="field" style="margin-top:12px;"><label>Expires On <span class="opt-label">(optional — leave blank for a permanent announcement)</span></label><input id="announcementExpiresAt" type="datetime-local" class="form-input" /></div>
             <div class="field" style="margin-top:8px;">
               <label>Send SMS Notification to Residents? <span class="opt-label">(via httpSMS)</span></label>
               <label class="toggle-label"><input type="checkbox" id="smsToggle" /> <span class="toggle-switch"></span> <span>Yes, send SMS to all registered residents</span></label>
             </div>
             <div class="form-actions"><button type="submit" class="btn-submit-form">Post Announcement</button><button type="button" class="btn-cancel-form" id="cancelAnnForm">Cancel</button></div>
-          </form>
+            </form>
+          </div>
         </div>
         <div class="card">
           <div id="announcementsAdminList"></div>
@@ -247,12 +252,13 @@ if (count($officialNameParts) >= 2) {
           <h2>Local Services Directory</h2>
           <button class="btn-primary-action" id="newServiceBtn"><i class="fa-solid fa-plus"></i> Add Service</button>
         </div>
-        <div class="card form-card" id="serviceForm" style="display:none;">
-          <div class="form-card-header">
-            <h3><i class="fa-solid fa-store"></i> Local Service</h3>
-            <button class="close-card-btn" id="closeServiceForm"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <form id="serviceFormEl">
+        <div class="modal-overlay form-modal-overlay" id="serviceForm">
+          <div class="modal-box form-card">
+            <div class="form-card-header">
+              <h3><i class="fa-solid fa-store"></i> Local Service</h3>
+              <button class="close-card-btn" id="closeServiceForm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="serviceFormEl">
             <input type="hidden" name="id" />
             <div class="form-2col">
               <div class="field"><label>Service Name</label><input name="service_name" type="text" class="form-input" required /></div>
@@ -265,7 +271,8 @@ if (count($officialNameParts) >= 2) {
             <div class="field" style="margin-top:12px;"><label>Operating Hours</label><input name="operating_hours" type="text" class="form-input" /></div>
             <div class="field" style="margin-top:12px;"><label>Description</label><textarea name="description" class="form-input" rows="4"></textarea></div>
             <div class="form-actions"><button type="submit" class="btn-submit-form">Save Service</button><button type="button" class="btn-cancel-form" id="cancelServiceForm">Cancel</button></div>
-          </form>
+            </form>
+          </div>
         </div>
         <div class="services-admin-grid" id="servicesAdminGrid"></div>
       </div>
@@ -277,12 +284,13 @@ if (count($officialNameParts) >= 2) {
           <h2>Manage Officials</h2>
           <button class="btn-primary-action" id="addOfficialBtn"><i class="fa-solid fa-plus"></i> Add Official</button>
         </div>
-        <div class="card form-card" id="officialFormCard" style="display:none;">
-          <div class="form-card-header">
-            <h3 id="officialFormTitle"><i class="fa-solid fa-user-plus"></i> Add New Official</h3>
-            <button class="close-card-btn" id="closeOfficialForm"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <form id="officialFormEl">
+        <div class="modal-overlay form-modal-overlay" id="officialFormCard">
+          <div class="modal-box form-card">
+            <div class="form-card-header">
+              <h3 id="officialFormTitle"><i class="fa-solid fa-user-plus"></i> Add New Official</h3>
+              <button class="close-card-btn" id="closeOfficialForm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="officialFormEl">
             <input type="hidden" name="official_id" />
             <div class="form-2col">
               <div class="field"><label>First Name</label><input type="text" name="fname" class="form-input" required /></div>
@@ -307,7 +315,8 @@ if (count($officialNameParts) >= 2) {
               <button type="submit" class="btn-submit-form" id="officialFormSubmitBtn">Save Official</button>
               <button type="button" class="btn-cancel-form" id="cancelOfficialForm">Cancel</button>
             </div>
-          </form>
+            </form>
+          </div>
         </div>
         <div class="card">
           <div class="table-toolbar">
