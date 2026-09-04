@@ -1,0 +1,27 @@
+# Environment variables - NEVER commit!
+.env
+.env.sms
+.env.local
+.env.*.local
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (if used)
+node_modules/
+npm-debug.log
+
+# Dependencies
+vendor/
+composer.lock
+
+# Logs
+*.log
