@@ -1,0 +1,167 @@
+# BarangayLink — Web-Based Barangay Management System
+
+A capstone project: a web-based information system for barangay operations, covering
+document requests (with real Word/PDF generation), complaint management, resident
+records, public announcements, a local services directory, SMS notifications, and
+role-based staff/admin access.
+
+> **Status:** Localhost/LAN deployment only. Not configured for production/public
+> hosting as-is (see [Security Notes](#security-notes) below).
+
+---
+
+## Features
+
+- **Public landing page** — announcements, local services directory, live stats, no login required
+- **Resident portal** — submit document requests, file complaints, view notifications, manage profile + photo
+- **Official portal** — process requests, generate real documents from Word templates (PDF preview), manage residents, complaints, announcements, local services
+- **Admin-only tools** (superior account role) — manage official accounts, full audit log
+- **SMS notifications** via [httpSMS](https://httpsms.com) — request status updates, complaint resolution, announcement broadcasts, OTP password recovery
+- **Document generation** — fills official `.docx` templates with request data and converts to PDF via LibreOffice, entirely offline after setup
+- **Audit logging** — every official write action is tracked
+- **Username + password authentication only** — no email anywhere in the system by design
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Server | Apache (via [Laragon](https://laragon.org/)) |
+| Language | PHP 8.x (MySQLi, no framework) |
+| Database | MySQL / MariaDB |
+| Frontend | Vanilla HTML/CSS/JavaScript |
+| SMS | [httpSMS](https://httpsms.com) API |
+| Document generation | PHP `ZipArchive` (docx templating) + [LibreOffice](https://www.libreoffice.org/) headless (PDF conversion) |
+
+No Composer or npm dependencies — the project runs as-is once the prerequisites below are installed.
+
+---
+
+## Prerequisites
+
+You need **all** of the following installed and working before this project will run correctly:
+
+### 1. Laragon (or equivalent Apache + MySQL + PHP stack)
+- Download: https://laragon.org/download/
+- Must include **PHP 8.x** with the following extensions **enabled** in `php.ini`:
+  - `extension=mysqli`
+  - `extension=zip` — required for document generation (template placeholder filling). The app will return a clear error if this is missing.
+  - `extension=fileinfo` — required for profile photo upload validation
+  - `extension=gd` — used for image validation on photo upload
+- Restart Apache after enabling any extension.
+
+### 2. LibreOffice (required — document generation will not work without it)
+- Download: https://www.libreoffice.org/download/download/
+- Used **headless** (no UI interaction) to convert generated `.docx` documents to PDF for in-browser preview.
+- Microsoft Word does **not** substitute for this — Word has no reliable scriptable CLI conversion path. Both can be installed side by side; LibreOffice is only used silently by the backend.
+- **Default expected path** (Windows): `C:\Program Files\LibreOffice\program\soffice.exe`
+  If your install path differs, update the `$sofficePath` variable in `api/requests/generate_document.php`.
+
+### 3. httpSMS account (required for all SMS features)
+- Sign up: https://httpsms.com
+- You need：
+  - An API key
+  - A registered "from" number (the phone acting as the SMS gateway, connected via the httpSMS Android app)
+  - A SIM slot identifier (`SIM1` or `SIM2`) if the sending device is dual-SIM
+- Without this, document-ready notices, complaint resolution SMS, announcement broadcasts, and OTP password recovery will silently fail to send (the rest of the app still works).
+
+---
+
+## Setup
+
+1. **Clone/copy this project** into your Laragon `www/` directory (e.g. `C:\laragon\www\BarangayLink`).
+
+2. **Create the database.**
+   Open phpMyAdmin (or the MySQL CLI) and import `database.sql`. This creates the
+   `barangay_system` database and all tables.
+
+   > `db.php` connects with `host=localhost`, `user=root`, `password=''` (Laragon's
+   > defaults). Edit `db.php` directly if your MySQL setup differs.
+
+3. **Configure environment variables.**
+   Create a `.env` file in the project root (this file is git-ignored and must be
+   created manually on each machine — it is never committed):
+   ```env
+   HTTPSMS_API_KEY=your_httpsms_api_key
+   HTTPSMS_FROM_NUMBER=+63XXXXXXXXXX
+   HTTPSMS_SIM_SLOT=SIM1
+   ```
+   (`.env.sms` is also supported as an alternate/legacy filename — `db.php` loads both if present.)
+
+4. **Confirm the LibreOffice path.**
+   Open `api/requests/generate_document.php` and confirm `$sofficePath` matches your
+   actual LibreOffice install location.
+
+5. **Create your first official (admin) account manually.**
+   Official self-registration is intentionally disabled (see
+   [Security Notes](#security-notes)). Insert your first admin account directly via
+   phpMyAdmin/MySQL — a commented example `INSERT` statement is included at the bottom
+   of `database.sql`. Passwords must be hashed with PHP's `password_hash()` — do not
+   insert a plain-text password.
+
+6. **Start Laragon** (Apache + MySQL) and visit:
+   ```
+   http://localhost/BarangayLink/index.php
+   ```
+   (adjust the folder name to whatever you cloned the project as)
+
+---
+
+## Project Structure
+
+```
+├─ api/                  All backend endpoints, grouped by feature
+│  ├─ announcements/      ├─ officials/           ├─ requests/
+│  ├─ audit/               ├─ residents/            ├─ services/
+│  ├─ auth/                (OTP recovery)           ├─ stats/
+│  ├─ complaints/          ├─ notifications/
+├─ pages/                Login + resident/official dashboards
+├─ js/  css/             Frontend logic and styling per page
+├─ templates/documents/  Word (.docx) templates for document generation
+├─ generated_documents/  Output folder for generated PDFs/DOCX (git-ignored contents)
+├─ uploads/resident_photos/  Resident-uploaded profile photos
+├─ database.sql          Full schema + example seed INSERT
+├─ db.php                DB connection + .env loader
+└─ index.php              Public landing page
+```
+
+---
+
+## Authentication Model
+
+- **No email anywhere in the system.** Residents and officials both authenticate with
+  **username + password** only.
+- **Residents** are registered in person by staff (ID + proof of residency), issued a
+  username/password directly — there is no public resident self-registration.
+- **Officials** have no self-registration either — accounts are created only by an
+  existing **admin**-role official via the in-app "Manage Officials" panel, or manually
+  in the database for the very first account.
+- **Roles:** `staff` and `admin` (superior account). Admins can manage other official
+  accounts and see the full audit log; staff see only their own audit history.
+- **Password recovery** is OTP-based via SMS (10-minute expiry, single-use codes) —
+  there is no email-based "forgot password" flow.
+
+---
+
+## Security Notes
+
+This project was built for a **localhost capstone demonstration**, not public
+production hosting. Before deploying anywhere reachable outside your local machine:
+
+- Move database credentials in `db.php` out of hardcoded values into `.env`
+- Never commit a real `.env` / `.env.sms` file — confirm `.gitignore` excludes them
+  (it does by default in this repo) and that no API keys ever end up in git history
+- Review file upload limits/validation in `api/residents/upload_photo.php` and
+  `generated_documents/` / `uploads/` folder permissions for a hardened deployment
+- `document_type` on `document_requests` is free text (no enum/check constraint) —
+  add server-side validation against a fixed list if opening this system to less
+  trusted input sources
+
+---
+
+## Acknowledgments
+
+Built as a capstone project. Document generation, SMS integration, and role-based
+access were iteratively developed and hardened over the course of the project — see
+commit history for the progression from initial prototype to current state.
