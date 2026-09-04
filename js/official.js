@@ -943,6 +943,7 @@ function renderAnnouncementsAdmin() {
           <span><i class="fa-regular fa-calendar"></i> ${formatAnnouncementDate(a.created_at)}</span>
           ${Number(a.is_pinned) === 1 ? '<span style="color:#1976D2"><i class="fa-solid fa-thumbtack"></i> Pinned</span>' : ''}
         </div>
+        <div class="aai-content">${truncateAnnouncementContent(a.content)}</div>
       </div>
       <div class="aai-actions">
         <button class="btn-action view" onclick="viewAnnouncement(${a.id})">View</button>
@@ -952,6 +953,10 @@ function renderAnnouncementsAdmin() {
       </div>
     </div>
   `).join('');
+}
+function truncateAnnouncementContent(content) {
+  const text = String(content || '').trim();
+  return text.length > 180 ? `${text.slice(0, 180).trimEnd()}…` : text;
 }
 function formatAnnouncementDate(value) {
   const date = new Date(value);
@@ -973,16 +978,44 @@ function initAnnouncementForm() {
     const title = e.target.querySelector('input[type=text]').value.trim();
     const content = e.target.querySelector('textarea').value.trim();
     try {
-      await fetchJson(`${API_BASE}/announcements/create.php`, {
+      const created = await fetchJson(`${API_BASE}/announcements/create.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, content, is_pinned: 0 })
       });
+      const shouldNotify = document.getElementById('smsToggle')?.checked;
+      let broadcastResult = null;
+      if (shouldNotify) {
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = 'Sending SMS...';
+        }
+        try {
+          broadcastResult = await fetchJson(`${API_BASE}/announcements/notify_all.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: created.id })
+          });
+        } finally {
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Post Announcement';
+          }
+        }
+      }
       await loadAnnouncements();
       await loadAuditLog();
       document.getElementById('annForm').style.display='none';
       e.target.reset();
-      showToastAdmin('Announcement Posted', 'Announcement posted successfully.');
+      if (broadcastResult) {
+        showToastAdmin(
+          'Announcement Posted',
+          `SMS sent: ${broadcastResult.sent}; skipped: ${broadcastResult.skipped}; failed: ${broadcastResult.failed}.`
+        );
+      } else {
+        showToastAdmin('Announcement Posted', 'Announcement posted successfully.');
+      }
     } catch (err) {
       showToastAdmin('Post Failed', err.message);
     }

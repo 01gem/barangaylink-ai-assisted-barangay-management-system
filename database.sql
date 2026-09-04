@@ -30,6 +30,19 @@ CREATE TABLE IF NOT EXISTS `barangay_officials` (
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
+CREATE TABLE IF NOT EXISTS `otp_codes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `account_type` enum('resident','official') NOT NULL,
+  `account_id` int NOT NULL,
+  `code` varchar(6) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `used` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_otp_account` (`account_type`,`account_id`,`used`,`expires_at`),
+  KEY `idx_otp_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `document_requests` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `reference_no` varchar(50) NOT NULL,

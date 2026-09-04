@@ -4,7 +4,22 @@ if (empty($_SESSION['official_id'])) {
   header('Location: login.php');
   exit;
 }
+function e($value) {
+  return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
 $isOfficialAdmin = ($_SESSION['official_role'] ?? '') === 'admin';
+$officialName = trim((string)($_SESSION['official_name'] ?? ''));
+$officialRole = trim((string)($_SESSION['official_role'] ?? ''));
+$officialPosition = trim((string)($_SESSION['official_position'] ?? ''));
+$officialRoleLabel = $officialRole === 'admin' ? 'Administrator' : ($officialRole === 'staff' ? 'Staff' : ucwords(str_replace(['_', '-'], ' ', $officialRole)));
+$officialSubtitle = $officialPosition !== '' ? $officialPosition : ($officialRoleLabel !== '' ? $officialRoleLabel : 'Official');
+$officialInitials = 'O';
+$officialNameParts = preg_split('/\s+/', $officialName, -1, PREG_SPLIT_NO_EMPTY);
+if (count($officialNameParts) >= 2) {
+  $officialInitials = strtoupper(substr($officialNameParts[0], 0, 1) . substr($officialNameParts[count($officialNameParts) - 1], 0, 1));
+} elseif (count($officialNameParts) === 1) {
+  $officialInitials = strtoupper(substr($officialNameParts[0], 0, 2));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,10 +48,10 @@ $isOfficialAdmin = ($_SESSION['official_role'] ?? '') === 'admin';
       </button>
     </div>
     <div class="sidebar-user">
-      <div class="user-avatar">BO</div>
+      <div class="user-avatar"><?= e($officialInitials) ?></div>
       <div class="user-info">
-        <span class="user-name">Barangay Official</span>
-        <span class="user-role official"><i class="fa-solid fa-shield-halved"></i> Authorized Official</span>
+        <span class="user-name"><?= e($officialName !== '' ? $officialName : 'Official') ?></span>
+        <span class="user-role official"><i class="fa-solid fa-shield-halved"></i> <?= e($officialSubtitle) ?></span>
       </div>
     </div>
     <nav class="sidebar-nav">
@@ -69,8 +84,8 @@ $isOfficialAdmin = ($_SESSION['official_role'] ?? '') === 'admin';
       <div class="topbar-right">
         <div class="official-chip"><i class="fa-solid fa-shield-halved"></i> Official Access</div>
         <div class="topbar-user">
-          <div class="tu-avatar">BO</div>
-          <span>Barangay Official</span>
+          <div class="tu-avatar"><?= e($officialInitials) ?></div>
+          <span><?= e($officialName !== '' ? $officialName : 'Official') ?></span>
           <a href="../logout.php" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i></a>
         </div>
       </div>

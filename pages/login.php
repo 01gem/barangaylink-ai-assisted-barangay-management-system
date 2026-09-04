@@ -106,11 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
       $loginError = '';
       if (verify_user_login($db, 'barangay_officials', $username, $password, $loginError)) {
-        $stmt = $db->prepare('SELECT id, fname, lname, role, status FROM barangay_officials WHERE username = ? LIMIT 1');
+        $stmt = $db->prepare('SELECT id, fname, lname, role, position, status FROM barangay_officials WHERE username = ? LIMIT 1');
         if ($stmt) {
           $stmt->bind_param('s', $username);
           $stmt->execute();
-          $stmt->bind_result($oid, $ofname, $olname, $orole, $ostatus);
+          $stmt->bind_result($oid, $ofname, $olname, $orole, $oposition, $ostatus);
           $fetched = $stmt->fetch();
           $stmt->close();
           if ($fetched && (string)$ostatus === 'inactive') {
@@ -121,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['official_id'] = (int)$oid;
             $_SESSION['official_name'] = trim($ofname . ' ' . $olname);
             $_SESSION['official_role'] = (string)$orole;
+            $_SESSION['official_position'] = trim((string)$oposition);
             header('Location: official.php');
             exit;
           } else {
@@ -265,7 +266,7 @@ function e($value) {
               <label class="checkbox-label">
                 <input type="checkbox" /> Remember me
               </label>
-              <a href="#" class="forgot-link">Forgot password?</a>
+              <a href="#" class="forgot-link" data-account-type="resident">Forgot password?</a>
             </div>
             <button type="submit" class="btn-submit">Log In as Resident</button>
             <div class="form-footer">
@@ -300,7 +301,7 @@ function e($value) {
               <label class="checkbox-label">
                 <input type="checkbox" /> Remember me
               </label>
-              <a href="#" class="forgot-link">Forgot password?</a>
+              <a href="#" class="forgot-link" data-account-type="official">Forgot password?</a>
             </div>
             <button type="submit" class="btn-submit">Log In as Official</button>
             <div class="notice-box">
@@ -311,6 +312,47 @@ function e($value) {
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <div class="reset-overlay" id="resetOverlay" aria-hidden="true">
+    <div class="reset-card" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+      <button type="button" class="reset-close" id="resetClose" aria-label="Close">&times;</button>
+      <div class="form-header">
+        <h2 id="resetTitle">Reset your password</h2>
+        <p id="resetAccountLabel">Password recovery</p>
+      </div>
+      <div id="resetMessage" class="reset-message" role="status"></div>
+      <form id="resetRequestForm" class="auth-form">
+        <div class="field">
+          <label for="resetUsername">Username</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-user"></i>
+            <input id="resetUsername" type="text" required autocomplete="username" />
+          </div>
+        </div>
+        <button type="submit" class="btn-submit" id="sendResetCodeBtn">Send Code</button>
+      </form>
+      <form id="resetCodeForm" class="auth-form" style="display:none;">
+        <div class="notice-box"><i class="fa-solid fa-clock"></i><span>The code expires in 10 minutes.</span></div>
+        <div class="field">
+          <label for="resetCode">6-digit code</label>
+          <div class="input-wrap"><i class="fa-solid fa-key"></i><input id="resetCode" type="text" inputmode="numeric" maxlength="6" required /></div>
+        </div>
+        <button type="submit" class="btn-submit" id="verifyResetCodeBtn">Verify Code</button>
+        <button type="button" class="reset-resend" id="resendResetCodeBtn">Resend code</button>
+      </form>
+      <form id="resetPasswordForm" class="auth-form" style="display:none;">
+        <div class="field">
+          <label for="resetNewPassword">New password</label>
+          <div class="input-wrap"><i class="fa-solid fa-lock"></i><input id="resetNewPassword" type="password" required /></div>
+        </div>
+        <div class="field">
+          <label for="resetConfirmPassword">Confirm new password</label>
+          <div class="input-wrap"><i class="fa-solid fa-lock"></i><input id="resetConfirmPassword" type="password" required /></div>
+        </div>
+        <button type="submit" class="btn-submit" id="resetPasswordBtn">Reset Password</button>
+      </form>
     </div>
   </div>
 

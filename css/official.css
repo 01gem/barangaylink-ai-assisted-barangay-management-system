@@ -304,22 +304,39 @@ body.sidebar-collapsed .slider-container {
 .status-suspended    { background: var(--danger-lt);  color: var(--danger); }
 
 /* ── ACTION BUTTONS (table) ──────────────── */
-.action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.btn-action {
-  padding: 5px 12px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 700;
-  border: none; border-radius: 5px; cursor: pointer; transition: all var(--t);
+.action-btns,
+.ca-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
 }
-.btn-action.approve { background: var(--success-lt); color: var(--success); }
+.btn-action {
+  min-width: 64px;
+  min-height: 32px;
+  padding: 8px 14px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.btn-action:hover { opacity: 0.85; }
+.btn-action.approve { background: var(--success-lt); color: var(--success); border-color: var(--success); }
 .btn-action.approve:hover { background: var(--success); color: white; }
-.btn-action.process { background: var(--info-lt); color: var(--info); }
+.btn-action.process { background: var(--info-lt); color: var(--info); border-color: var(--info); }
 .btn-action.process:hover { background: var(--info); color: white; }
-.btn-action.ready   { background: #F0FDF4; color: var(--success); }
+.btn-action.ready   { background: #F0FDF4; color: var(--success); border-color: var(--success); }
 .btn-action.ready:hover { background: var(--success); color: white; }
-.btn-action.view    { background: var(--surface-2); color: var(--text-2); }
+.btn-action.view    { background: var(--surface-2); color: var(--text-2); border-color: var(--text-3); }
 .btn-action.view:hover  { background: var(--blue-lt); color: var(--blue-mid); }
-.btn-action.resolve { background: var(--success-lt); color: var(--success); }
+.btn-action.resolve { background: var(--success-lt); color: var(--success); border-color: var(--success); }
 .btn-action.resolve:hover { background: var(--success); color: white; }
-.btn-action.reject  { background: var(--danger-lt); color: var(--danger); }
+.btn-action.reject  { background: var(--danger-lt); color: var(--danger); border-color: var(--danger); }
 .btn-action.reject:hover  { background: var(--danger); color: white; }
 
 /* ── COMPLAINTS ADMIN LIST ───────────────── */
@@ -357,6 +374,7 @@ body.sidebar-collapsed .slider-container {
 .aai-body { flex: 1; }
 .aai-title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 3px; }
 .aai-meta { font-size: 11px; color: var(--text-3); display: flex; gap: 12px; flex-wrap: wrap; }
+.aai-content { margin-top: 8px; color: var(--text-2); font-size: 13px; line-height: 1.5; }
 .aai-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
 
 /* ── LOCAL SERVICES ADMIN ────────────────── */
