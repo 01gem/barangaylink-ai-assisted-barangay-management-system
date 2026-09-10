@@ -30,6 +30,7 @@ function load_env($filePath = __DIR__ . '/.env') {
   }
 }
 
+load_env(__DIR__ . '/.env');
 load_env(__DIR__ . '/.env.sms');
 load_env();
 

@@ -82,4 +82,58 @@ function log_audit(
   $stmt->close();
   return $ok;
 }
+
+function omniroute_chat(string $userMessage, string $systemPrompt = '', string $model = 'auto'): array {
+  $apiKey = getenv('OMNIROUTE_API_KEY') ?: '';
+  $baseUrl = rtrim(getenv('OMNIROUTE_BASE_URL') ?: '', '/');
+
+  if ($apiKey === '' || $baseUrl === '') {
+    return ['success' => false, 'error' => 'Omniroute is not configured (missing OMNIROUTE_API_KEY or OMNIROUTE_BASE_URL).'];
+  }
+
+  $messages = [];
+  if ($systemPrompt !== '') {
+    $messages[] = ['role' => 'system', 'content' => $systemPrompt];
+  }
+  $messages[] = ['role' => 'user', 'content' => $userMessage];
+
+  $payload = json_encode(['model' => $model, 'messages' => $messages]);
+
+  if (!function_exists('curl_init')) {
+    return ['success' => false, 'error' => 'cURL extension is not enabled.'];
+  }
+
+  $ch = curl_init($baseUrl . '/chat/completions');
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => [
+      'Content-Type: application/json',
+      'Authorization: Bearer ' . $apiKey,
+    ],
+    CURLOPT_POSTFIELDS => $payload,
+    CURLOPT_TIMEOUT => 30,
+  ]);
+
+  $response = curl_exec($ch);
+  if ($response === false) {
+    $error = curl_error($ch);
+    curl_close($ch);
+    return ['success' => false, 'error' => 'Omniroute request failed: ' . $error];
+  }
+  $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+
+  $decoded = json_decode($response, true);
+  if ($httpStatus < 200 || $httpStatus >= 300 || !is_array($decoded)) {
+    return ['success' => false, 'error' => 'Omniroute returned HTTP ' . $httpStatus, 'raw' => $response];
+  }
+
+  $content = $decoded['choices'][0]['message']['content'] ?? null;
+  if ($content === null) {
+    return ['success' => false, 'error' => 'Unexpected Omniroute response shape.', 'raw' => $decoded];
+  }
+
+  return ['success' => true, 'content' => $content, 'model' => $decoded['model'] ?? $model];
+}
 ?>
