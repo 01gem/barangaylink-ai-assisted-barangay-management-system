@@ -10,27 +10,7 @@ CREATE TABLE IF NOT EXISTS `residents` (
   `address` varchar(100) NOT NULL,
   `contact` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
-Remove click-outside-to-close (backdrop click dismissal) behavior from all modals in 
-the official dashboard, since accidental clicks near the edge of a modal shouldn't 
-discard in-progress form data. Keep the X (close) button and any Cancel button fully 
-functional — only remove the backdrop-click handler.
-
-Before making changes, inspect js/official.js for every place a click event listener 
-is attached to a modal overlay/backdrop element (from the recent modal consistency 
-work: Post Announcement, Add Resident, Add Service, Add Official, Document Generation 
-modal, and the Action/details modal).
-
-Do not change any other modal behavior — open triggers, close button handlers, form 
-submission, or styling should remain exactly as they are. Only remove the 
-overlay-click-to-close listener(s).
-
-Apply this consistently across every modal in the project, not just the four fixed in 
-the last pass — check the document generation modal and action/details modal too, 
-since they were confirmed to already use the shared backdrop pattern and may have the 
-same click-to-close behavior.
-
-After implementing, show me a diff or summary of every file changed, and confirm which 
-modals had this behavior removed.  `profile_photo` varchar(255) DEFAULT NULL,
+  `profile_photo` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
@@ -147,10 +127,8 @@ CREATE TABLE IF NOT EXISTS `local_services` (
 
 INSERT INTO `barangay_officials` (`id`, `fname`, `lname`, `username`, `role`, `address`,
  `contact`, `password`, `position`, `status`, `created_at`) VALUES (NULL, 'Gem', 'Dulduco',
-  'gem', 'admin', 'Purok 2, Barangay Sampaguita', '09060312740', 'gemgem', 'Barangay Captain',
+  'gem', 'admin', 'Purok 2, Barangay Sampaguita', '09060312740', '$2y$10$mYgU3xgq32rcE219Q5zXvOkzDni4GcLNT4i.sa9/X3K...', 'Barangay Captain',
    'active', CURRENT_TIMESTAMP
 );
 
--- Example manual insert for barangay officials (password must be pre-hashed in PHP using password_hash):
--- INSERT INTO `barangay_officials` (`fname`, `lname`, `username`, `role`, `address`, `contact`, `password`, `position`, `status`)
--- VALUES ('Juan', 'Dela Cruz', 'jdelacruz', 'admin', 'Purok 1, Barangay Sampaguita, Tagana-an, Surigao del Norte', '09171234567', '<password_hash_here>', 'Barangay Captain', 'active');
+--password unhashed: gemgem
