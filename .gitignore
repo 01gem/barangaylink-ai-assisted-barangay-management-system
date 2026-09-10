@@ -26,3 +26,6 @@ composer.lock
 
 # Logs
 *.log
+
+#folder for generated files
+generated_documents
