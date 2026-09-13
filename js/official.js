@@ -5,6 +5,16 @@
 const API_BASE = '../api';
 const SIDEBAR_STATE_KEY = 'barangalink.sidebarCollapsed.official';
 const ACTIVE_SECTION_KEY = 'official_active_section';
+const SECTION_PLAQUES = {
+  dashboard: { icon: 'fa-house', label: 'Office of the Barangay Captain' },
+  residents: { icon: 'fa-users', label: 'Population Management' },
+  requests: { icon: 'fa-file-lines', label: 'Records & Processing' },
+  complaints: { icon: 'fa-triangle-exclamation', label: 'Grievance Redressal' },
+  announcements: { icon: 'fa-bullhorn', label: 'Public Information' },
+  services: { icon: 'fa-hand-holding-heart', label: 'Welfare & Operations' },
+  officials: { icon: 'fa-user-shield', label: 'Human Resources' },
+  auditlog: { icon: 'fa-shield-halved', label: 'Security & Audit' }
+};
 let RESIDENTS = [];
 let OFFICIALS = [];
 let DOC_REQUESTS = [];
@@ -28,12 +38,14 @@ const DOC_TEMPLATE_FIELDS = {
 function switchTab(name) {
   document.querySelectorAll('.snav-item[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
-  const titles = {
-    dashboard:'Dashboard', residents:'Resident Management', requests:'Document Requests',
-    complaints:'Complaints & Concerns', announcements:'Announcements',
-    services:'Local Services Directory', officials:'Manage Officials', auditlog:'Audit Log'
-  };
-  document.getElementById('pageTitle').textContent = titles[name] || name;
+  const plaque = SECTION_PLAQUES[name];
+  const plaqueIcon = document.getElementById('sectionPlaqueIcon');
+  const plaqueText = document.getElementById('sectionPlaque');
+  if (plaque && plaqueIcon && plaqueText) {
+    plaqueText.parentElement.className = `door-plaque door-plaque-${name}`;
+    plaqueIcon.className = `fa-solid ${plaque.icon}`;
+    plaqueText.textContent = plaque.label;
+  }
   try {
     sessionStorage.setItem(ACTIVE_SECTION_KEY, name);
   } catch (err) {
@@ -201,25 +213,28 @@ function renderDashActivity() {
 function renderResidents(data) {
   const tbody = document.getElementById('residentsBody');
   if (!tbody) return;
-  tbody.innerHTML = data.map(r => `
+  tbody.innerHTML = data.map(r => {
+    const toggleLabel = r.status === 'active' ? 'Deactivate' : 'Activate';
+    return `
     <tr>
       <td><code style="font-size:12px;color:var(--blue-mid)">${r.id}</code></td>
       <td style="font-weight:600;color:var(--text)">
         ${r.profilePhoto ? `<img class="resident-photo-thumb" src="../${escapeAttribute(r.profilePhoto)}" alt="" />` : `<span class="resident-initials-thumb">${escapeAttribute(getInitials(r.name))}</span>`}
         ${escapeAttribute(r.name)}
       </td>
-      <td>${r.addr}</td>
-      <td>${r.contact}</td>
-      <td><span class="status-badge status-${r.status}">${r.status}</span></td>
-      <td>
+      <td>${escapeAttribute(r.addr)}</td>
+      <td>${escapeAttribute(r.contact)}</td>
+      <td><span class="status-badge status-${r.status === 'active' ? 'verified' : 'suspended'}">${escapeAttribute(r.status)}</span></td>
+      <td class="action-column">
         <div class="action-btns">
-          <button class="btn-action view" onclick="showModal('Resident Profile','${r.name} — ${r.addr} — ${r.contact} — Status: ${r.status}')">View</button>
+          <button class="btn-action view" onclick="showModal('Resident Profile','${escapeAttribute(r.name)} — ${escapeAttribute(r.addr)} — ${escapeAttribute(r.contact)} — Status: ${escapeAttribute(r.status)}')">View</button>
           <button class="btn-action process" onclick="openEditResidentForm(${r.dbId})">Edit</button>
-          <button class="btn-action reject" onclick="deleteResident(${r.dbId})">Delete</button>
+          <button class="btn-action ${r.status === 'active' ? 'reject' : 'approve'}" onclick="toggleResidentStatus(${r.dbId})">${toggleLabel}</button>
         </div>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 function initResidentTable() {
   renderResidents(RESIDENTS);
@@ -247,7 +262,7 @@ function renderDocRequests(data) {
       <td>${r.purpose}</td>
       <td>${r.date}</td>
       <td><span class="status-badge status-${r.status}">${r.status}</span></td>
-        <td>
+        <td class="action-column">
           <div class="action-btns">
             ${r.status === 'pending'    ? `<button class="btn-action process" onclick="openDocumentGenerationModal('${r.ref}')">Process</button>` : ''}
             ${r.status === 'processing' ? `<button class="btn-action ready"   onclick="updateReqStatus('${r.ref}','ready')">Mark Ready</button>` : ''}
@@ -544,7 +559,7 @@ function mapResidentRow(row) {
     contact: row.contact || '-',
     username: row.username || '',
     profilePhoto: row.profile_photo || '',
-    status: 'verified'
+    status: row.status || 'active'
   };
 }
 
@@ -732,13 +747,14 @@ function openEditResidentForm(dbId) {
   card.classList.add('show');
 }
 
-async function deleteResident(dbId) {
+async function toggleResidentStatus(dbId) {
   const resident = RESIDENTS.find(r => r.dbId === Number(dbId));
   if (!resident) return;
-  const ok = window.confirm(`Delete resident record for ${resident.name}?`);
+  const next = resident.status === 'active' ? 'deactivate' : 'activate';
+  const ok = window.confirm(`${next === 'deactivate' ? 'Deactivate' : 'Activate'} resident record for ${resident.name}?`);
   if (!ok) return;
   try {
-    await fetchJson(`${API_BASE}/residents/delete.php`, {
+    const data = await fetchJson(`${API_BASE}/residents/deactivate.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -749,10 +765,14 @@ async function deleteResident(dbId) {
     await loadResidents();
     await loadAuditLog();
     await refreshDashboard();
-    showToastAdmin('Resident Deleted', `${resident.name} was removed from resident records.`);
+    showToastAdmin(next === 'deactivate' ? 'Resident Deactivated' : 'Resident Activated', data.message || `${resident.name} is now ${next === 'deactivate' ? 'inactive' : 'active'}.`);
   } catch (err) {
-    showToastAdmin('Delete Failed', err.message);
+    showToastAdmin('Update Failed', err.message);
   }
+}
+
+async function deleteResident(dbId) {
+  return toggleResidentStatus(dbId);
 }
 
 function mapOfficialRow(row) {
@@ -785,7 +805,7 @@ function renderOfficials(data) {
       <td>${o.position}</td>
       <td><span class="status-badge" style="background:var(--surface-2);color:var(--text-2)">${o.role}</span></td>
       <td><span class="status-badge status-${o.status === 'active' ? 'verified' : 'suspended'}">${o.status}</span></td>
-      <td>
+      <td class="action-column">
         <div class="action-btns">
           <button class="btn-action process" onclick="openEditOfficialForm(${o.dbId})">Edit</button>
           ${isSelf ? '' : `<button class="btn-action ${o.status === 'active' ? 'reject' : 'approve'}" onclick="toggleOfficialStatus(${o.dbId})">${toggleLabel}</button>`}

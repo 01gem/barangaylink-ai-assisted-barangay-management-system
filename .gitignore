@@ -38,3 +38,5 @@ generated_documents/*
 
 profile_img/*
 !profile_img/README.txt
+
+source-code.txt

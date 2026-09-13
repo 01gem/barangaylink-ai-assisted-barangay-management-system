@@ -76,25 +76,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
       $loginError = '';
       if (verify_user_login($db, 'residents', $username, $password, $loginError)) {
-        session_regenerate_id(true);
-        $_SESSION = [];
-        // Load resident details and store in session
-        $stmt = $db->prepare('SELECT id, fname, lname, username FROM residents WHERE username = ? LIMIT 1');
+        $stmt = $db->prepare('SELECT id, fname, lname, username, status FROM residents WHERE username = ? LIMIT 1');
         if ($stmt) {
           $stmt->bind_param('s', $username);
           $stmt->execute();
-          $stmt->bind_result($rid, $rfname, $rlname, $rusername);
-          if ($stmt->fetch()) {
+          $stmt->bind_result($rid, $rfname, $rlname, $rusername, $rstatus);
+          $fetched = $stmt->fetch();
+          $stmt->close();
+          if ($fetched && (string)$rstatus === 'inactive') {
+            $errors[] = 'This resident account is inactive. Contact a barangay administrator.';
+          } elseif ($fetched) {
+            session_regenerate_id(true);
+            $_SESSION = [];
             $_SESSION['resident_id'] = (int)$rid;
             $_SESSION['resident_username'] = $rusername;
             $_SESSION['resident_name'] = trim($rfname . ' ' . $rlname);
+            header('Location: resident.php');
+            exit;
+          } else {
+            $errors[] = 'Invalid resident username or password.';
           }
-          $stmt->close();
+        } else {
+          $errors[] = 'Unable to complete resident login at this time.';
         }
-        header('Location: resident.php');
-        exit;
+      } else {
+        $errors[] = $loginError !== '' ? $loginError : 'Invalid resident username or password.';
       }
-      $errors[] = $loginError !== '' ? $loginError : 'Invalid resident username or password.';
     }
   } elseif ($action === 'official-login') {
     $activeTab = 'official-login';

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS `residents` (
   `address` varchar(100) NOT NULL,
   `contact` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `profile_photo` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)

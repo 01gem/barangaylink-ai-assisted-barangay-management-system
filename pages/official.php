@@ -79,7 +79,10 @@ if (count($officialNameParts) >= 2) {
   <main class="main-area">
     <header class="topbar">
       <div class="topbar-left">
-        <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        <div class="door-plaque door-plaque-dashboard" aria-live="polite">
+          <i class="fa-solid fa-house" id="sectionPlaqueIcon" aria-hidden="true"></i>
+          <span id="sectionPlaque">Office of the Barangay Captain</span>
+        </div>
       </div>
       <div class="topbar-right">
         <div class="official-chip"><i class="fa-solid fa-shield-halved"></i> Official Access</div>
@@ -121,7 +124,7 @@ if (count($officialNameParts) >= 2) {
       <!-- ─── RESIDENTS ─── -->
       <div class="tab-panel" id="tab-residents">
         <div class="tab-header">
-          <h2>Resident Management</h2>
+          <h2>Resident</h2>
           <button class="btn-primary-action" id="addResidentBtn"><i class="fa-solid fa-plus"></i> Add Resident</button>
         </div>
         <div class="modal-overlay form-modal-overlay" id="residentFormCard">
@@ -154,14 +157,13 @@ if (count($officialNameParts) >= 2) {
             <input type="text" class="table-search" id="residentSearch" placeholder="Search by name, address…" />
             <select class="table-filter" id="residentStatusFilter">
               <option value="all">All Status</option>
-              <option value="verified">Verified</option>
-              <option value="pending">Pending</option>
-              <option value="suspended">Suspended</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
           <div class="table-wrap">
             <table class="data-table" id="residentsTable">
-              <thead><tr><th>Resident ID</th><th>Full Name</th><th>Address</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Resident ID</th><th>Full Name</th><th>Address</th><th>Contact</th><th>Status</th><th class="action-column">Actions</th></tr></thead>
               <tbody id="residentsBody"></tbody>
             </table>
           </div>
@@ -184,7 +186,7 @@ if (count($officialNameParts) >= 2) {
           </div>
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Ref #</th><th>Resident</th><th>Document Type</th><th>Purpose</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Ref #</th><th>Resident</th><th>Document Type</th><th>Purpose</th><th>Date</th><th>Status</th><th class="action-column">Action</th></tr></thead>
               <tbody id="reqsBody"></tbody>
             </table>
           </div>
@@ -329,7 +331,7 @@ if (count($officialNameParts) >= 2) {
           </div>
           <div class="table-wrap">
             <table class="data-table" id="officialsTable">
-              <thead><tr><th>ID</th><th>Full Name</th><th>Username</th><th>Contact</th><th>Position</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>ID</th><th>Full Name</th><th>Username</th><th>Contact</th><th>Position</th><th>Role</th><th>Status</th><th class="action-column">Actions</th></tr></thead>
               <tbody id="officialsBody"></tbody>
             </table>
           </div>

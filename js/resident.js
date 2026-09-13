@@ -8,11 +8,25 @@ const ACTIVE_SECTION_KEY = 'resident_active_section';
 let REQUESTS = [];
 let COMPLAINTS = [];
 let NOTIFICATIONS = [];
+let ANNOUNCEMENTS = [];
+let SERVICES = [];
+let announcementsLoaded = false;
+let servicesLoaded = false;
 
 // Get all notifications
 function getAllNotifications() {
   return NOTIFICATIONS;
 }
+
+const SECTION_PLAQUES = {
+  announcements: { icon: 'fa-bullhorn', label: 'Community Announcements' },
+  services: { icon: 'fa-store', label: 'Local Services Directory' },
+  dashboard: { icon: 'fa-house', label: 'Resident Dashboard' },
+  requests: { icon: 'fa-file-lines', label: 'My Document Requests' },
+  complaints: { icon: 'fa-triangle-exclamation', label: 'My Complaints & Concerns' },
+  notifications: { icon: 'fa-bell', label: 'Notifications' },
+  profile: { icon: 'fa-user', label: 'My Profile' }
+};
 
 // ── TAB SWITCHING ─────────────────────────
 function switchTab(name) {
@@ -22,8 +36,20 @@ function switchTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => {
     p.classList.toggle('active', p.id === `tab-${name}`);
   });
-  const titles = { dashboard:'Dashboard', requests:'Document Requests', complaints:'Complaints & Concerns', notifications:'Notifications', profile:'My Profile' };
-  document.getElementById('pageTitle').textContent = titles[name] || name;
+  const plaque = SECTION_PLAQUES[name];
+  const plaqueIcon = document.getElementById('sectionPlaqueIcon');
+  const plaqueText = document.getElementById('sectionPlaque');
+  if (plaque && plaqueIcon && plaqueText) {
+    plaqueText.parentElement.className = `door-plaque door-plaque-${name}`;
+    plaqueIcon.className = `fa-solid ${plaque.icon}`;
+    plaqueText.textContent = plaque.label;
+  }
+  if (name === 'announcements' && !announcementsLoaded) {
+    loadAnnouncements().catch(err => showToast('Announcements Load Failed', err.message));
+  }
+  if (name === 'services' && !servicesLoaded) {
+    loadServices().catch(err => showToast('Services Load Failed', err.message));
+  }
   try {
     sessionStorage.setItem(ACTIVE_SECTION_KEY, name);
   } catch (err) {
@@ -391,6 +417,91 @@ async function loadComplaints() {
 async function loadNotifications() {
   const data = await fetchJson(`${API_BASE}/notifications/list.php`);
   NOTIFICATIONS = (data.notifications || []).map(mapNotificationRow);
+}
+
+function renderAnnouncements() {
+  const grid = document.getElementById('residentAnnouncementsGrid');
+  if (!grid) return;
+  if (!ANNOUNCEMENTS.length) {
+    grid.innerHTML = '<p class="community-empty">No announcements have been posted yet.</p>';
+    return;
+  }
+  grid.innerHTML = ANNOUNCEMENTS.slice(0, 6).map(a => `
+    <article class="community-card announcement-card">
+      <div class="community-meta">
+        ${Number(a.is_pinned) === 1 ? '<span class="community-badge">Pinned</span>' : ''}
+        <span><i class="fa-regular fa-calendar"></i> ${formatCommunityDate(a.created_at)}</span>
+      </div>
+      <h3>${a.title}</h3>
+      <p>${a.content}</p>
+    </article>
+  `).join('');
+}
+
+async function loadAnnouncements() {
+  const data = await fetchJson(`${API_BASE}/announcements/list.php`);
+  ANNOUNCEMENTS = data.announcements || [];
+  announcementsLoaded = true;
+  renderAnnouncements();
+}
+
+function renderServices(filter = 'all') {
+  const grid = document.getElementById('residentServicesGrid');
+  if (!grid) return;
+  const filtered = filter === 'all'
+    ? SERVICES
+    : SERVICES.filter(service => String(service.category || '').toLowerCase() === filter);
+  if (!filtered.length) {
+    grid.innerHTML = '<p class="community-empty">No local services have been added yet.</p>';
+    return;
+  }
+  grid.innerHTML = filtered.map(service => `
+    <article class="community-card service-card">
+      <div class="service-card-head">
+        <div class="service-icon">🏪</div>
+        <div>
+          <h3>${service.service_name}</h3>
+          <span>${service.category}</span>
+        </div>
+      </div>
+      <div class="service-verified"><i class="fa-solid fa-circle-check"></i> Barangay Verified</div>
+      <p>${service.description || 'No description provided.'}</p>
+      <div class="service-detail"><i class="fa-solid fa-location-dot"></i> ${service.address || 'Address not provided'}</div>
+      <div class="service-detail"><i class="fa-solid fa-phone"></i> ${service.contact_number || 'Contact not provided'}</div>
+      ${service.operating_hours ? `<div class="service-detail"><i class="fa-regular fa-clock"></i> ${service.operating_hours}</div>` : ''}
+    </article>
+  `).join('');
+}
+
+function renderServiceFilters() {
+  const row = document.getElementById('residentServiceFilters');
+  if (!row) return;
+  const filters = ['All', ...new Set(SERVICES.map(service => service.category).filter(Boolean))];
+  row.innerHTML = filters.map((filter, index) =>
+    `<button class="filter-btn ${index === 0 ? 'active' : ''}" data-filter="${filter.toLowerCase()}">${filter}</button>`
+  ).join('');
+  row.querySelectorAll('.filter-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      row.querySelectorAll('.filter-btn').forEach(item => item.classList.remove('active'));
+      button.classList.add('active');
+      renderServices(button.dataset.filter);
+    });
+  });
+}
+
+async function loadServices() {
+  const data = await fetchJson(`${API_BASE}/services/list.php`);
+  SERVICES = data.services || [];
+  servicesLoaded = true;
+  renderServiceFilters();
+  renderServices();
+}
+
+function formatCommunityDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric'
+  });
 }
 
 async function refreshResidentView() {

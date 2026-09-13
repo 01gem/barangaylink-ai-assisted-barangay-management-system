@@ -66,6 +66,12 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
       </div>
     </div>
     <nav class="sidebar-nav">
+      <button class="snav-item" data-tab="announcements">
+        <i class="fa-solid fa-bullhorn"></i> <span class="nav-text">Announcements</span>
+      </button>
+      <button class="snav-item" data-tab="services">
+        <i class="fa-solid fa-store"></i> <span class="nav-text">Local Services</span>
+      </button>
       <button class="snav-item active" data-tab="dashboard">
         <i class="fa-solid fa-gauge-high"></i> <span class="nav-text">Dashboard</span>
       </button>
@@ -93,7 +99,10 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
   <main class="main-area">
     <header class="topbar">
       <div class="topbar-left">
-        <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        <div class="door-plaque door-plaque-dashboard" aria-live="polite">
+          <i class="fa-solid fa-house" id="sectionPlaqueIcon" aria-hidden="true"></i>
+          <span id="sectionPlaque">Resident Dashboard</span>
+        </div>
       </div>
       <div class="topbar-right">
         <button class="topbar-icon-btn" id="notifToggle">
@@ -113,6 +122,19 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
     </header>
 
     <div class="content-area">
+
+      <!-- ─── ANNOUNCEMENTS TAB ─── -->
+      <div class="tab-panel" id="tab-announcements">
+        <div class="tab-header"><h2>Announcements</h2></div>
+        <div class="community-grid" id="residentAnnouncementsGrid"></div>
+      </div>
+
+      <!-- ─── LOCAL SERVICES TAB ─── -->
+      <div class="tab-panel" id="tab-services">
+        <div class="tab-header"><h2>Local Services</h2></div>
+        <div class="filter-row" id="residentServiceFilters"></div>
+        <div class="community-grid" id="residentServicesGrid"></div>
+      </div>
 
       <!-- ─── DASHBOARD TAB ─── -->
       <div class="tab-panel active" id="tab-dashboard">
