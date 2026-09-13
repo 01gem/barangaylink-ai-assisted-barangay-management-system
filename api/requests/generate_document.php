@@ -85,7 +85,7 @@ if (!isset($templateMap[$documentType])) {
 
 $templateFile = $templateMap[$documentType]['file'];
 $placeholderKeys = $templateMap[$documentType]['placeholders'];
-$templatePath = __DIR__ . '/../../templates/documents/' . $templateFile;
+$templatePath = __DIR__ . '/../../document_templates/' . $templateFile;
 if (!file_exists($templatePath)) {
   json_error("Template file not found: {$templateFile}", 500);
 }

@@ -166,9 +166,9 @@ You need **all** of the following installed and working before this project will
 │  ├─ ai/                  (OmniRoute diagnostic endpoint)
 ├─ pages/                Login + resident/official dashboards
 ├─ js/  css/             Frontend logic and styling per page
-├─ templates/documents/  Word (.docx) templates for document generation
-├─ generated_documents/  Output folder for generated PDFs/DOCX (git-ignored contents)
-├─ uploads/resident_photos/  Resident-uploaded profile photos
+├─ document_templates/  Local Word (.docx) templates (files are git-ignored)
+├─ generated_documents/  Local generated PDFs/DOCX (files are git-ignored)
+├─ profile_img/          Local resident-uploaded profile photos (git-ignored)
 ├─ database.sql          Full schema + example seed INSERT
 ├─ db.php                DB connection + .env loader
 └─ index.php              Public landing page
@@ -231,7 +231,7 @@ production hosting. Before deploying anywhere reachable outside your local machi
 - OmniRoute is currently used only by the admin diagnostic endpoint; adding other AI
   features should route through a server-side PHP endpoint and `omniroute_chat()`.
 - Review file upload limits/validation in `api/residents/upload_photo.php` and
-  `generated_documents/` / `uploads/` folder permissions for a hardened deployment
+  `generated_documents/` / `profile_img/` folder permissions for a hardened deployment
 - `document_type` on `document_requests` is free text (no enum/check constraint) —
   add server-side validation against a fixed list if opening this system to less
   trusted input sources

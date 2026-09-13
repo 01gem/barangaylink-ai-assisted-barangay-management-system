@@ -31,7 +31,7 @@ if (@getimagesize($upload['tmp_name']) === false) {
 }
 
 $residentId = (int)$_SESSION['resident_id'];
-$uploadDir = __DIR__ . '/../../uploads/resident_photos';
+$uploadDir = __DIR__ . '/../../profile_img/residents';
 if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
   json_error('Unable to create photo storage directory.', 500);
 }
@@ -49,7 +49,7 @@ if (!move_uploaded_file($upload['tmp_name'], $absolutePath)) {
   json_error('Unable to save profile photo.', 500);
 }
 
-$relativePath = 'uploads/resident_photos/' . $filename;
+$relativePath = 'profile_img/residents/' . $filename;
 $db = get_db();
 $stmt = $db->prepare('UPDATE residents SET profile_photo = ? WHERE id = ?');
 if (!$stmt) json_error('Unable to update profile photo.', 500);

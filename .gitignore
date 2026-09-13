@@ -27,6 +27,14 @@ composer.lock
 # Logs
 *.log
 
-# Folder for generated files
-generated_documents/
-resident_photos/
+# Runtime and user-uploaded storage. Keep only the folder instructions and
+# the generated-documents access rules in the repository.
+document_templates/*
+!document_templates/README.txt
+
+generated_documents/*
+!generated_documents/.htaccess
+!generated_documents/README.txt
+
+profile_img/*
+!profile_img/README.txt
