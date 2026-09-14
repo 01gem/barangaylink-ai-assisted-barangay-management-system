@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS `barangay_officials` (
   `contact` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `position` varchar(100) NOT NULL DEFAULT '',
+  `profile_photo` varchar(255) DEFAULT NULL,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

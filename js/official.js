@@ -13,7 +13,8 @@ const SECTION_PLAQUES = {
   announcements: { icon: 'fa-bullhorn', label: 'Public Information' },
   services: { icon: 'fa-hand-holding-heart', label: 'Welfare & Operations' },
   officials: { icon: 'fa-user-shield', label: 'Human Resources' },
-  auditlog: { icon: 'fa-shield-halved', label: 'Security & Audit' }
+  auditlog: { icon: 'fa-shield-halved', label: 'Security & Audit' },
+  profile: { icon: 'fa-user', label: 'My Official Profile' }
 };
 let RESIDENTS = [];
 let OFFICIALS = [];
@@ -132,6 +133,52 @@ function initLogoutConfirmation() {
           sessionStorage.removeItem(ACTIVE_SECTION_KEY);
         } catch (err) {
           /* ignore storage failures */
+        }
+
+        function initOfficialProfilePhotoUpload() {
+          const form = document.getElementById('officialProfilePhotoForm');
+          const input = document.getElementById('officialProfilePhotoInput');
+          if (!form || !input) return;
+          input.addEventListener('change', () => {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const modal = document.createElement('div');
+            modal.className = 'photo-confirm-overlay';
+            modal.innerHTML = `
+              <div class="photo-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="officialPhotoConfirmTitle">
+                <h3 id="officialPhotoConfirmTitle">Change your profile photo to this?</h3>
+                <img class="photo-confirm-preview" alt="Selected profile photo preview" />
+                <div class="photo-confirm-actions">
+                  <button type="button" class="btn-submit-form photo-confirm-btn">Confirm</button>
+                  <button type="button" class="btn-cancel-form photo-cancel-btn">Cancel</button>
+                </div>
+              </div>`;
+            const preview = modal.querySelector('.photo-confirm-preview');
+            const objectUrl = URL.createObjectURL(file);
+            preview.src = objectUrl;
+            document.body.appendChild(modal);
+            const close = () => {
+              URL.revokeObjectURL(objectUrl);
+              input.value = '';
+              modal.remove();
+            };
+            modal.querySelector('.photo-cancel-btn').addEventListener('click', close);
+            modal.querySelector('.photo-confirm-btn').addEventListener('click', async () => {
+              const body = new FormData();
+              body.append('photo', file);
+              try {
+                const response = await fetch('../api/officials/upload_photo.php', { method: 'POST', body });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || 'Photo upload failed.');
+                close();
+                showToastAdmin('Profile Photo Updated', 'Your profile photo was updated.');
+                window.location.reload();
+              } catch (error) {
+                close();
+                showToastAdmin('Upload Failed', error.message);
+              }
+            });
+          });
         }
       }
     });
@@ -1300,6 +1347,7 @@ document.addEventListener('DOMContentLoaded', () => {
   restoreActiveSection();
   initSidebarToggle();
   initLogoutConfirmation();
+  initOfficialProfilePhotoUpload();
   initResidentTable();
   initDocRequestsTable();
   initComplaintsAdmin();

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../db.php';
 session_start();
 if (empty($_SESSION['official_id'])) {
   header('Location: login.php');
@@ -11,6 +12,20 @@ $isOfficialAdmin = ($_SESSION['official_role'] ?? '') === 'admin';
 $officialName = trim((string)($_SESSION['official_name'] ?? ''));
 $officialRole = trim((string)($_SESSION['official_role'] ?? ''));
 $officialPosition = trim((string)($_SESSION['official_position'] ?? ''));
+$officialProfilePhoto = '';
+$officialDb = get_db();
+$officialPhotoStmt = $officialDb->prepare('SELECT profile_photo FROM barangay_officials WHERE id = ? LIMIT 1');
+if ($officialPhotoStmt) {
+  $officialId = (int)$_SESSION['official_id'];
+  $officialPhotoStmt->bind_param('i', $officialId);
+  $officialPhotoStmt->execute();
+  $officialPhotoResult = $officialPhotoStmt->get_result();
+  if ($officialPhotoResult && ($officialPhotoRow = $officialPhotoResult->fetch_assoc())) {
+    $officialProfilePhoto = (string)($officialPhotoRow['profile_photo'] ?? '');
+  }
+  $officialPhotoStmt->close();
+}
+$officialPhotoUrl = $officialProfilePhoto !== '' ? '../' . ltrim($officialProfilePhoto, '/') : '';
 $officialRoleLabel = $officialRole === 'admin' ? 'Administrator' : ($officialRole === 'staff' ? 'Staff' : ucwords(str_replace(['_', '-'], ' ', $officialRole)));
 $officialSubtitle = $officialPosition !== '' ? $officialPosition : ($officialRoleLabel !== '' ? $officialRoleLabel : 'Official');
 $officialInitials = 'O';
@@ -48,7 +63,11 @@ if (count($officialNameParts) >= 2) {
       </button>
     </div>
     <div class="sidebar-user">
-      <div class="user-avatar"><?= e($officialInitials) ?></div>
+      <?php if ($officialPhotoUrl !== ''): ?>
+        <img class="user-avatar official-header-photo" src="<?= e($officialPhotoUrl) ?>" alt="Profile photo" />
+      <?php else: ?>
+        <div class="user-avatar"><?= e($officialInitials) ?></div>
+      <?php endif; ?>
       <div class="user-info">
         <span class="user-name"><?= e($officialName !== '' ? $officialName : 'Official') ?></span>
         <span class="user-role official"><i class="fa-solid fa-shield-halved"></i> <?= e($officialSubtitle) ?></span>
@@ -69,6 +88,8 @@ if (count($officialNameParts) >= 2) {
       <button class="snav-item" data-tab="officials"><i class="fa-solid fa-user-shield"></i> <span class="nav-text">Manage Officials</span></button>
       <?php endif; ?>
       <button class="snav-item" data-tab="auditlog"><i class="fa-solid fa-scroll"></i> <span class="nav-text">Audit Log</span></button>
+      <div class="nav-group-label">Account</div>
+      <button class="snav-item" data-tab="profile"><i class="fa-solid fa-user"></i> <span class="nav-text">My Profile</span></button>
     </nav>
     <div class="sidebar-footer">
       <a href="../logout.php" class="snav-item logout-item"><i class="fa-solid fa-arrow-left-from-bracket"></i> <span class="nav-text">Back to Home</span></a>
@@ -87,7 +108,11 @@ if (count($officialNameParts) >= 2) {
       <div class="topbar-right">
         <div class="official-chip"><i class="fa-solid fa-shield-halved"></i> Official Access</div>
         <div class="topbar-user">
-          <div class="tu-avatar"><?= e($officialInitials) ?></div>
+          <?php if ($officialPhotoUrl !== ''): ?>
+            <img class="tu-avatar official-header-photo" src="<?= e($officialPhotoUrl) ?>" alt="Profile photo" />
+          <?php else: ?>
+            <div class="tu-avatar"><?= e($officialInitials) ?></div>
+          <?php endif; ?>
           <span><?= e($officialName !== '' ? $officialName : 'Official') ?></span>
           <a href="../logout.php" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i></a>
         </div>
@@ -355,6 +380,35 @@ if (count($officialNameParts) >= 2) {
               <thead><tr><th>Timestamp</th><th>User</th><th>Role</th><th>Action</th><th>Module</th><th>IP Address</th></tr></thead>
               <tbody id="auditBody"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── MY PROFILE ─── -->
+      <div class="tab-panel" id="tab-profile">
+        <div class="tab-header"><h2>My Profile</h2></div>
+        <div class="profile-grid official-profile-grid">
+          <div class="card profile-card">
+            <?php if ($officialPhotoUrl !== ''): ?>
+              <img class="profile-avatar-big profile-photo" src="<?= e($officialPhotoUrl) ?>" alt="Profile photo" />
+            <?php else: ?>
+              <div class="profile-avatar-big"><?= e($officialInitials) ?></div>
+            <?php endif; ?>
+            <div class="profile-name-big"><?= e($officialName !== '' ? $officialName : 'Official') ?></div>
+            <div class="profile-role-badge official-profile-role"><i class="fa-solid fa-shield-halved"></i> <?= e($officialSubtitle) ?></div>
+            <form id="officialProfilePhotoForm" class="profile-photo-form" enctype="multipart/form-data">
+              <label for="officialProfilePhotoInput" class="btn-submit-form">Change Photo</label>
+              <input id="officialProfilePhotoInput" type="file" name="photo" accept="image/jpeg,image/png" hidden />
+              <small>JPEG or PNG, maximum 2MB</small>
+            </form>
+          </div>
+          <div class="card">
+            <h3 class="card-section-title">Official Information</h3>
+            <div class="profile-form">
+              <div class="field"><label>Name</label><div class="profile-readonly"><?= e($officialName) ?></div></div>
+              <div class="field"><label>Position</label><div class="profile-readonly"><?= e($officialPosition !== '' ? $officialPosition : '—') ?></div></div>
+              <div class="field"><label>Role</label><div class="profile-readonly"><?= e($officialRoleLabel) ?></div></div>
+            </div>
           </div>
         </div>
       </div>

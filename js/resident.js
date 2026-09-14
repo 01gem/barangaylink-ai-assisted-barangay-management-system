@@ -567,21 +567,45 @@ function initProfilePhotoUpload() {
   const form = document.getElementById('profilePhotoForm');
   const input = document.getElementById('profilePhotoInput');
   if (!form || !input) return;
-  input.addEventListener('change', async () => {
+  input.addEventListener('change', () => {
     if (!input.files || !input.files[0]) return;
-    const body = new FormData();
-    body.append('photo', input.files[0]);
-    try {
-      const response = await fetch('../api/residents/upload_photo.php', { method: 'POST', body });
-      const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.message || 'Photo upload failed.');
-      showToast('Profile Photo Updated', 'Your profile photo was updated.');
-      window.location.reload();
-    } catch (error) {
-      showToast('Upload Failed', error.message);
-    } finally {
+    const file = input.files[0];
+    const modal = document.createElement('div');
+    modal.className = 'photo-confirm-overlay';
+    modal.innerHTML = `
+      <div class="photo-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="photoConfirmTitle">
+        <h3 id="photoConfirmTitle">Change your profile photo to this?</h3>
+        <img class="photo-confirm-preview" alt="Selected profile photo preview" />
+        <div class="photo-confirm-actions">
+          <button type="button" class="btn-submit-form photo-confirm-btn">Confirm</button>
+          <button type="button" class="btn-cancel-form photo-cancel-btn">Cancel</button>
+        </div>
+      </div>`;
+    const preview = modal.querySelector('.photo-confirm-preview');
+    const objectUrl = URL.createObjectURL(file);
+    preview.src = objectUrl;
+    document.body.appendChild(modal);
+    const close = () => {
+      URL.revokeObjectURL(objectUrl);
       input.value = '';
-    }
+      modal.remove();
+    };
+    modal.querySelector('.photo-cancel-btn').addEventListener('click', close);
+    modal.querySelector('.photo-confirm-btn').addEventListener('click', async () => {
+      const body = new FormData();
+      body.append('photo', file);
+      try {
+        const response = await fetch('../api/residents/upload_photo.php', { method: 'POST', body });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Photo upload failed.');
+        close();
+        showToast('Profile Photo Updated', 'Your profile photo was updated.');
+        window.location.reload();
+      } catch (error) {
+        close();
+        showToast('Upload Failed', error.message);
+      }
+    });
   });
 }
 

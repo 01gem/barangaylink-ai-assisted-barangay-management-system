@@ -564,6 +564,11 @@ textarea.form-input { resize: vertical; line-height: 1.6; }
 .profile-photo-form { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 14px; }
 .profile-photo-form label { cursor: pointer; }
 .profile-photo-form small { color: var(--text-3); font-size: 11px; }
+.photo-confirm-overlay { display: flex; position: fixed; inset: 0; background: rgba(11,30,69,0.55); backdrop-filter: blur(6px); z-index: 10000; align-items: center; justify-content: center; padding: 1rem; }
+.photo-confirm-modal { background: white; border-radius: var(--radius); padding: 24px; width: min(360px, 100%); box-shadow: var(--shadow-md); text-align: center; }
+.photo-confirm-modal h3 { font-size: 1rem; margin-bottom: 16px; }
+.photo-confirm-preview { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 20px; }
+.photo-confirm-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .profile-readonly { min-height: 38px; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-2); font-size: 13px; }
 .profile-name-big { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--text); }
 .profile-role-badge {

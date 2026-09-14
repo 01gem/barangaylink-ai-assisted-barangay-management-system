@@ -38,5 +38,7 @@ generated_documents/*
 
 profile_img/*
 !profile_img/README.txt
+!profile_img/b_official/
+!profile_img/b_official/.htaccess
 
 source-code.txt
