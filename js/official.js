@@ -582,7 +582,7 @@ function renderComplaintsAdmin(data) {
         </select>
         <input type="text" class="ca-note-input" id="compNote-${c.id}" placeholder="Add official note…" value="${c.note}" />
         <button class="btn-action resolve" onclick="updateComplaint(${c.id})">Save</button>
-        <button class="btn-action view" onclick="showModal('Complaint Detail','${c.ref} — ${c.cat} — Filed by ${c.filer}')">View</button>
+        <button class="btn-action view" onclick="document.getElementById('actionModalBox').classList.remove('detail-modal-box'); showModal('Complaint Detail','${c.ref} — ${c.cat} — Filed by ${c.filer}')">View</button>
       </div>
     </div>
   `).join('');
@@ -1194,7 +1194,10 @@ async function editAnnouncement(id) {
 }
 function viewAnnouncement(id) {
   const announcement = ANNOUNCEMENTS_DATA.find(a => Number(a.id) === Number(id));
-  if (announcement) showModal(announcement.title, announcement.content);
+  if (announcement) {
+    document.getElementById('actionModalBox')?.classList.remove('detail-modal-box');
+    showModal(announcement.title, announcement.content);
+  }
 }
 async function toggleAnnouncementPin(id) {
   const announcement = ANNOUNCEMENTS_DATA.find(a => Number(a.id) === Number(id));
@@ -1319,6 +1322,7 @@ function viewService(id) {
   if (!service) return;
   const details = [service.category, service.description, service.address, service.contact_number, service.operating_hours]
     .filter(Boolean).join('<br>');
+  document.getElementById('actionModalBox')?.classList.remove('detail-modal-box');
   showModal(service.service_name, details || 'No additional details provided.');
 }
 function editService(id) {
@@ -1420,17 +1424,20 @@ function showResidentProfile(dbId) {
   const photo = resident.profilePhoto
     ? `<img class="resident-detail-photo" src="../${escapeAttribute(resident.profilePhoto)}" alt="Profile photo" />`
     : `<span class="resident-detail-initials">${escapeHtml(getInitials(resident.name))}</span>`;
+  document.getElementById('actionModalBox')?.classList.add('detail-modal-box');
   showModal('Resident Profile', `
     <div class="resident-detail-head">${photo}<div><h4>${displayValue(resident.name)}</h4><span>${displayValue(resident.status)}</span></div></div>
-    <h4 class="detail-group-title">Identity</h4><dl class="detail-grid">
-      ${profileDetailField('Address', resident.addr)}${profileDetailField('Contact', resident.contact)}${profileDetailField('Username', resident.username)}${profileDetailField('Status', resident.status)}
-    </dl>
-    <h4 class="detail-group-title">Household &amp; Demographics</h4><dl class="detail-grid">
-      ${profileDetailField('Birthdate', resident.birthdate)}${profileDetailField('Civil Status', resident.civil_status)}${profileDetailField('Purok / Zone', resident.purok_zone)}${profileDetailField('Household Size', resident.household_size)}${profileDetailField('Dependents', resident.number_of_dependents)}${profileDetailField('Household Head', yesNo(resident.is_household_head))}${profileDetailField('Solo Parent', yesNo(resident.is_solo_parent))}${profileDetailField('PWD', yesNo(resident.is_pwd))}${profileDetailField('4Ps Member', yesNo(resident.is_4ps_member))}${profileDetailField('Years of Residency', resident.years_of_residency)}
-    </dl>
-    <h4 class="detail-group-title">Livelihood &amp; Skills</h4><dl class="detail-grid">
-      ${profileDetailField('Educational Attainment', resident.educational_attainment)}${profileDetailField('Employment Status', resident.employment_status)}${profileDetailField('Occupation', resident.occupation)}${profileDetailField('Income Bracket', resident.monthly_income_bracket)}${profileDetailField('Skills', resident.skills)}${profileDetailField('Work Experience (years)', resident.work_experience_years)}${profileDetailField('Certifications', resident.training_certifications)}${profileDetailField('Work Availability', resident.work_availability)}${profileDetailField("Driver's License", yesNo(resident.has_drivers_license))}
-    </dl>`);
+    <div class="detail-columns">
+      <section class="detail-column"><h4 class="detail-group-title">Identity</h4><dl class="detail-grid">
+        ${profileDetailField('Address', resident.addr)}${profileDetailField('Contact', resident.contact)}${profileDetailField('Username', resident.username)}${profileDetailField('Status', resident.status)}
+      </dl></section>
+      <section class="detail-column"><h4 class="detail-group-title">Household &amp; Demographics</h4><dl class="detail-grid">
+        ${profileDetailField('Birthdate', resident.birthdate)}${profileDetailField('Civil Status', resident.civil_status)}${profileDetailField('Purok / Zone', resident.purok_zone)}${profileDetailField('Household Size', resident.household_size)}${profileDetailField('Dependents', resident.number_of_dependents)}${profileDetailField('Household Head', yesNo(resident.is_household_head))}${profileDetailField('Solo Parent', yesNo(resident.is_solo_parent))}${profileDetailField('PWD', yesNo(resident.is_pwd))}${profileDetailField('4Ps Member', yesNo(resident.is_4ps_member))}${profileDetailField('Years of Residency', resident.years_of_residency)}
+      </dl></section>
+      <section class="detail-column"><h4 class="detail-group-title">Livelihood &amp; Skills</h4><dl class="detail-grid">
+        ${profileDetailField('Educational Attainment', resident.educational_attainment)}${profileDetailField('Employment Status', resident.employment_status)}${profileDetailField('Occupation', resident.occupation)}${profileDetailField('Income Bracket', resident.monthly_income_bracket)}${profileDetailField('Skills', resident.skills)}${profileDetailField('Work Experience (years)', resident.work_experience_years)}${profileDetailField('Certifications', resident.training_certifications)}${profileDetailField('Work Availability', resident.work_availability)}${profileDetailField("Driver's License", yesNo(resident.has_drivers_license))}
+      </dl></section>
+    </div>`);
 }
 
 function showRequestDetails(requestId) {
@@ -1438,6 +1445,7 @@ function showRequestDetails(requestId) {
   if (!request) return;
   const canViewGenerated = request.generatedDocumentPath && request.status !== 'completed';
   const generatedUrl = canViewGenerated ? `../${request.generatedDocumentPath.replace(/^\.?\//, '')}` : '';
+  document.getElementById('actionModalBox')?.classList.add('detail-modal-box');
   showModal('Request Details', `
     <dl class="detail-grid request-detail-grid">
       ${profileDetailField('Reference Number', request.ref)}${profileDetailField('Resident', request.resident)}${profileDetailField('Document Type', request.type)}${profileDetailField('Purpose', request.purpose)}${profileDetailField('Status', request.status)}${profileDetailField('Date Requested', request.date)}${profileDetailField('Date Completed / Processed', request.dateCompleted)}
