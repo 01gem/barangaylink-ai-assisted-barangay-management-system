@@ -12,6 +12,30 @@ CREATE TABLE IF NOT EXISTS `residents` (
   `password` varchar(255) NOT NULL,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `profile_photo` varchar(255) DEFAULT NULL,
+  -- Profiling: Household & Demographics
+  `birthdate` DATE NULL,
+  `civil_status` VARCHAR(30) NULL,
+  `purok_zone` VARCHAR(50) NULL,
+  `household_size` INT DEFAULT 1,
+  `number_of_dependents` INT DEFAULT 0,
+  `is_household_head` TINYINT(1) DEFAULT 0,
+  `is_solo_parent` TINYINT(1) DEFAULT 0,
+  `is_pwd` TINYINT(1) DEFAULT 0,
+  `is_4ps_member` TINYINT(1) DEFAULT 0,
+  `years_of_residency` INT DEFAULT 0,
+  -- Profiling: Livelihood & Skills
+  `educational_attainment` VARCHAR(50) NULL,
+  `employment_status` ENUM('Employed','Unemployed','Self-Employed','Student','Retired') NULL,
+  `occupation` VARCHAR(150) NULL,
+  `monthly_income_bracket` ENUM('Below 5000','5000-10000','10000-20000','Above 20000') NULL,
+  `skills` TEXT NULL,
+  `work_experience_years` INT DEFAULT 0,
+  `training_certifications` TEXT NULL,
+  `work_availability` ENUM('Full-time','Part-time','Seasonal','Not looking') NULL,
+  `has_drivers_license` TINYINT(1) DEFAULT 0,
+  -- System-computed profiling fields
+  `skill_category` VARCHAR(50) NULL,
+  `eligibility_score` INT DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;

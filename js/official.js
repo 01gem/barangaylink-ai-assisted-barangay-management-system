@@ -12,6 +12,7 @@ const SECTION_PLAQUES = {
   complaints: { icon: 'fa-triangle-exclamation', label: 'Grievance Redressal' },
   announcements: { icon: 'fa-bullhorn', label: 'Public Information' },
   services: { icon: 'fa-hand-holding-heart', label: 'Welfare & Operations' },
+  aianalyst: { icon: 'fa-brain', label: 'AI Analyst' },
   officials: { icon: 'fa-user-shield', label: 'Human Resources' },
   auditlog: { icon: 'fa-shield-halved', label: 'Security & Audit' },
   profile: { icon: 'fa-user', label: 'My Official Profile' }
@@ -134,52 +135,52 @@ function initLogoutConfirmation() {
         } catch (err) {
           /* ignore storage failures */
         }
+      }
+    });
+  });
+}
 
-        function initOfficialProfilePhotoUpload() {
-          const form = document.getElementById('officialProfilePhotoForm');
-          const input = document.getElementById('officialProfilePhotoInput');
-          if (!form || !input) return;
-          input.addEventListener('change', () => {
-            if (!input.files || !input.files[0]) return;
-            const file = input.files[0];
-            const modal = document.createElement('div');
-            modal.className = 'photo-confirm-overlay';
-            modal.innerHTML = `
-              <div class="photo-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="officialPhotoConfirmTitle">
-                <h3 id="officialPhotoConfirmTitle">Change your profile photo to this?</h3>
-                <img class="photo-confirm-preview" alt="Selected profile photo preview" />
-                <div class="photo-confirm-actions">
-                  <button type="button" class="btn-submit-form photo-confirm-btn">Confirm</button>
-                  <button type="button" class="btn-cancel-form photo-cancel-btn">Cancel</button>
-                </div>
-              </div>`;
-            const preview = modal.querySelector('.photo-confirm-preview');
-            const objectUrl = URL.createObjectURL(file);
-            preview.src = objectUrl;
-            document.body.appendChild(modal);
-            const close = () => {
-              URL.revokeObjectURL(objectUrl);
-              input.value = '';
-              modal.remove();
-            };
-            modal.querySelector('.photo-cancel-btn').addEventListener('click', close);
-            modal.querySelector('.photo-confirm-btn').addEventListener('click', async () => {
-              const body = new FormData();
-              body.append('photo', file);
-              try {
-                const response = await fetch('../api/officials/upload_photo.php', { method: 'POST', body });
-                const data = await response.json();
-                if (!response.ok || !data.success) throw new Error(data.message || 'Photo upload failed.');
-                close();
-                showToastAdmin('Profile Photo Updated', 'Your profile photo was updated.');
-                window.location.reload();
-              } catch (error) {
-                close();
-                showToastAdmin('Upload Failed', error.message);
-              }
-            });
-          });
-        }
+function initOfficialProfilePhotoUpload() {
+  const form = document.getElementById('officialProfilePhotoForm');
+  const input = document.getElementById('officialProfilePhotoInput');
+  if (!form || !input) return;
+  input.addEventListener('change', () => {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const modal = document.createElement('div');
+    modal.className = 'photo-confirm-overlay';
+    modal.innerHTML = `
+      <div class="photo-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="officialPhotoConfirmTitle">
+        <h3 id="officialPhotoConfirmTitle">Change your profile photo to this?</h3>
+        <img class="photo-confirm-preview" alt="Selected profile photo preview" />
+        <div class="photo-confirm-actions">
+          <button type="button" class="btn-submit-form photo-confirm-btn">Confirm</button>
+          <button type="button" class="btn-cancel-form photo-cancel-btn">Cancel</button>
+        </div>
+      </div>`;
+    const preview = modal.querySelector('.photo-confirm-preview');
+    const objectUrl = URL.createObjectURL(file);
+    preview.src = objectUrl;
+    document.body.appendChild(modal);
+    const close = () => {
+      URL.revokeObjectURL(objectUrl);
+      input.value = '';
+      modal.remove();
+    };
+    modal.querySelector('.photo-cancel-btn').addEventListener('click', close);
+    modal.querySelector('.photo-confirm-btn').addEventListener('click', async () => {
+      const body = new FormData();
+      body.append('photo', file);
+      try {
+        const response = await fetch('../api/officials/upload_photo.php', { method: 'POST', body });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Photo upload failed.');
+        close();
+        showToastAdmin('Profile Photo Updated', 'Your profile photo was updated.');
+        window.location.reload();
+      } catch (error) {
+        close();
+        showToastAdmin('Upload Failed', error.message);
       }
     });
   });
@@ -606,7 +607,28 @@ function mapResidentRow(row) {
     contact: row.contact || '-',
     username: row.username || '',
     profilePhoto: row.profile_photo || '',
-    status: row.status || 'active'
+    status: row.status || 'active',
+    // Profiling: Household & Demographics
+    birthdate: row.birthdate || '',
+    civil_status: row.civil_status || '',
+    purok_zone: row.purok_zone || '',
+    household_size: row.household_size ?? 1,
+    number_of_dependents: row.number_of_dependents ?? 0,
+    is_household_head: Number(row.is_household_head || 0),
+    is_solo_parent: Number(row.is_solo_parent || 0),
+    is_pwd: Number(row.is_pwd || 0),
+    is_4ps_member: Number(row.is_4ps_member || 0),
+    years_of_residency: row.years_of_residency ?? 0,
+    // Profiling: Livelihood & Skills
+    educational_attainment: row.educational_attainment || '',
+    employment_status: row.employment_status || '',
+    occupation: row.occupation || '',
+    monthly_income_bracket: row.monthly_income_bracket || '',
+    skills: row.skills || '',
+    work_experience_years: row.work_experience_years ?? 0,
+    training_certifications: row.training_certifications || '',
+    work_availability: row.work_availability || '',
+    has_drivers_license: Number(row.has_drivers_license || 0)
   };
 }
 
@@ -731,6 +753,9 @@ function initResidentCreateForm() {
     passwordLabel.textContent = 'Temporary Password';
     passwordInput.required = true;
     passwordInput.placeholder = '';
+    // Reset profiling section
+    const profilingSection = document.getElementById('profilingSection');
+    if (profilingSection) profilingSection.removeAttribute('open');
   };
   const closeForm = () => {
     card.classList.remove('show');
@@ -746,7 +771,12 @@ function initResidentCreateForm() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const payload = Object.fromEntries(new FormData(form).entries());
+    const fd = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+    // Checkboxes not in FormData when unchecked — default to 0
+    ['is_household_head', 'is_solo_parent', 'is_pwd', 'is_4ps_member', 'has_drivers_license'].forEach(k => {
+      payload[k] = fd.has(k) ? 1 : 0;
+    });
     const isEdit = payload.resident_id && String(payload.resident_id).trim() !== '';
     const url = isEdit ? `${API_BASE}/residents/update.php` : `${API_BASE}/residents/create.php`;
     try {
@@ -791,6 +821,33 @@ function openEditResidentForm(dbId) {
   title.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Resident';
   submitBtn.textContent = 'Update Resident';
   passwordLabel.textContent = 'New Password (optional)';
+
+  // ── Populate profiling fields ──
+  if (form.birthdate) form.birthdate.value = resident.birthdate || '';
+  if (form.civil_status) form.civil_status.value = resident.civil_status || '';
+  if (form.purok_zone) form.purok_zone.value = resident.purok_zone || '';
+  if (form.household_size) form.household_size.value = resident.household_size ?? 1;
+  if (form.number_of_dependents) form.number_of_dependents.value = resident.number_of_dependents ?? 0;
+  if (form.years_of_residency) form.years_of_residency.value = resident.years_of_residency ?? 0;
+  if (form.is_household_head) form.is_household_head.checked = !!resident.is_household_head;
+  if (form.is_solo_parent) form.is_solo_parent.checked = !!resident.is_solo_parent;
+  if (form.is_pwd) form.is_pwd.checked = !!resident.is_pwd;
+  if (form.is_4ps_member) form.is_4ps_member.checked = !!resident.is_4ps_member;
+  if (form.educational_attainment) form.educational_attainment.value = resident.educational_attainment || '';
+  if (form.employment_status) form.employment_status.value = resident.employment_status || '';
+  if (form.occupation) form.occupation.value = resident.occupation || '';
+  if (form.monthly_income_bracket) form.monthly_income_bracket.value = resident.monthly_income_bracket || '';
+  if (form.skills) form.skills.value = resident.skills || '';
+  if (form.work_experience_years) form.work_experience_years.value = resident.work_experience_years ?? 0;
+  if (form.training_certifications) form.training_certifications.value = resident.training_certifications || '';
+  if (form.work_availability) form.work_availability.value = resident.work_availability || '';
+  if (form.has_drivers_license) form.has_drivers_license.checked = !!resident.has_drivers_license;
+
+  // Auto-open profiling section if any profiling data exists
+  const hasProfilingData = resident.birthdate || resident.civil_status || resident.purok_zone || resident.occupation || resident.skills || resident.employment_status;
+  const profilingSection = document.getElementById('profilingSection');
+  if (profilingSection && hasProfilingData) profilingSection.setAttribute('open', '');
+
   card.classList.add('show');
 }
 

@@ -83,6 +83,8 @@ if (count($officialNameParts) >= 2) {
       <div class="nav-group-label">Community</div>
       <button class="snav-item" data-tab="announcements"><i class="fa-solid fa-bullhorn"></i> <span class="nav-text">Announcements</span></button>
       <button class="snav-item" data-tab="services"><i class="fa-solid fa-store"></i> <span class="nav-text">Local Services</span></button>
+      <div class="nav-group-label">Intelligence</div>
+      <button class="snav-item" data-tab="aianalyst"><i class="fa-solid fa-brain"></i> <span class="nav-text">AI Analyst</span></button>
       <div class="nav-group-label">System</div>
       <?php if ($isOfficialAdmin): ?>
       <button class="snav-item" data-tab="officials"><i class="fa-solid fa-user-shield"></i> <span class="nav-text">Manage Officials</span></button>
@@ -170,6 +172,97 @@ if (count($officialNameParts) >= 2) {
             </div>
             <div class="field"><label>Address</label><input type="text" name="address" class="form-input" required /></div>
             <div class="field" style="margin-top:12px;"><label id="residentPasswordLabel">Temporary Password</label><input type="password" name="password" class="form-input" required /></div>
+
+            <!-- ── Collapsible Profiling Information ── -->
+            <details class="profiling-section" id="profilingSection">
+              <summary class="profiling-toggle"><i class="fa-solid fa-id-card-clip"></i> Profiling Information <span class="opt-label">(optional)</span></summary>
+
+              <fieldset class="profiling-group">
+                <legend>Household &amp; Demographics</legend>
+                <div class="form-2col">
+                  <div class="field"><label>Birthdate</label><input type="date" name="birthdate" class="form-input" /></div>
+                  <div class="field"><label>Civil Status</label>
+                    <select name="civil_status" class="form-input">
+                      <option value="">— Select —</option>
+                      <option value="Single">Single</option>
+                      <option value="Married">Married</option>
+                      <option value="Widowed">Widowed</option>
+                      <option value="Separated">Separated</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-2col">
+                  <div class="field"><label>Purok / Zone</label><input type="text" name="purok_zone" class="form-input" placeholder="e.g. Purok 3" /></div>
+                  <div class="field"><label>Household Size</label><input type="number" name="household_size" class="form-input" min="1" value="1" /></div>
+                </div>
+                <div class="form-2col">
+                  <div class="field"><label>No. of Dependents</label><input type="number" name="number_of_dependents" class="form-input" min="0" value="0" /></div>
+                  <div class="field"><label>Years of Residency</label><input type="number" name="years_of_residency" class="form-input" min="0" value="0" /></div>
+                </div>
+                <div class="form-2col profiling-checkboxes">
+                  <label class="checkbox-label"><input type="checkbox" name="is_household_head" value="1" /> Household Head</label>
+                  <label class="checkbox-label"><input type="checkbox" name="is_solo_parent" value="1" /> Solo Parent</label>
+                  <label class="checkbox-label"><input type="checkbox" name="is_pwd" value="1" /> Person with Disability (PWD)</label>
+                  <label class="checkbox-label"><input type="checkbox" name="is_4ps_member" value="1" /> 4Ps Member</label>
+                </div>
+              </fieldset>
+
+              <fieldset class="profiling-group">
+                <legend>Livelihood &amp; Skills</legend>
+                <div class="form-2col">
+                  <div class="field"><label>Educational Attainment</label>
+                    <select name="educational_attainment" class="form-input">
+                      <option value="">— Select —</option>
+                      <option value="Elementary">Elementary</option>
+                      <option value="High School">High School</option>
+                      <option value="Vocational">Vocational</option>
+                      <option value="College">College</option>
+                      <option value="Postgraduate">Postgraduate</option>
+                    </select>
+                  </div>
+                  <div class="field"><label>Employment Status</label>
+                    <select name="employment_status" class="form-input">
+                      <option value="">— Select —</option>
+                      <option value="Employed">Employed</option>
+                      <option value="Unemployed">Unemployed</option>
+                      <option value="Self-Employed">Self-Employed</option>
+                      <option value="Student">Student</option>
+                      <option value="Retired">Retired</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-2col">
+                  <div class="field"><label>Occupation</label><input type="text" name="occupation" class="form-input" placeholder="e.g. Farmer, Teacher" /></div>
+                  <div class="field"><label>Monthly Income Bracket</label>
+                    <select name="monthly_income_bracket" class="form-input">
+                      <option value="">— Select —</option>
+                      <option value="Below 5000">Below ₱5,000</option>
+                      <option value="5000-10000">₱5,000 – ₱10,000</option>
+                      <option value="10000-20000">₱10,000 – ₱20,000</option>
+                      <option value="Above 20000">Above ₱20,000</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field" style="margin-top:8px;"><label>Skills <span class="opt-label">(comma-separated)</span></label><textarea name="skills" class="form-input" rows="2" placeholder="e.g. Carpentry, Welding, Sewing"></textarea></div>
+                <div class="form-2col">
+                  <div class="field"><label>Work Experience (years)</label><input type="number" name="work_experience_years" class="form-input" min="0" value="0" /></div>
+                  <div class="field"><label>Work Availability</label>
+                    <select name="work_availability" class="form-input">
+                      <option value="">— Select —</option>
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Seasonal">Seasonal</option>
+                      <option value="Not looking">Not looking</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field" style="margin-top:8px;"><label>Training / Certifications</label><textarea name="training_certifications" class="form-input" rows="2" placeholder="e.g. TESDA NC II - Welding"></textarea></div>
+                <div class="profiling-checkboxes" style="margin-top:8px;">
+                  <label class="checkbox-label"><input type="checkbox" name="has_drivers_license" value="1" /> Has Driver's License</label>
+                </div>
+              </fieldset>
+            </details>
+
             <div class="form-actions">
               <button type="submit" class="btn-submit-form" id="residentFormSubmitBtn">Save Resident</button>
               <button type="button" class="btn-cancel-form" id="cancelResidentForm">Cancel</button>
@@ -381,6 +474,16 @@ if (count($officialNameParts) >= 2) {
               <tbody id="auditBody"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ─── AI ANALYST ─── -->
+      <div class="tab-panel" id="tab-aianalyst">
+        <div class="tab-header"><h2><i class="fa-solid fa-brain"></i> AI Analyst</h2></div>
+        <div class="card" style="padding:48px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:16px;opacity:0.3;"><i class="fa-solid fa-brain"></i></div>
+          <h3 style="font-size:1.4rem;color:var(--text-2);margin-bottom:8px;">Coming soon.</h3>
+          <p style="color:var(--text-3);font-size:14px;">AI-powered barangay analytics and resident profiling insights will appear here.</p>
         </div>
       </div>
 
