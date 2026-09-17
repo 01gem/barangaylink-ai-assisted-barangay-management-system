@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/../db.php';
 session_start();
+function e($value) {
+  return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
 if (empty($_SESSION['resident_id'])) {
   header('Location: login.php');
   exit;
@@ -8,9 +11,18 @@ if (empty($_SESSION['resident_id'])) {
 $residentId = (int)$_SESSION['resident_id'];
 $residentName = $_SESSION['resident_name'] ?? 'Resident User';
 $residentUsername = $_SESSION['resident_username'] ?? '';
-$residentProfile = ['fname' => '', 'lname' => '', 'address' => '', 'contact' => '', 'username' => $residentUsername, 'profile_photo' => null];
+$residentProfile = [
+  'fname' => '', 'lname' => '', 'address' => '', 'contact' => '', 'username' => $residentUsername,
+  'profile_photo' => null, 'created_at' => null, 'birthdate' => null, 'civil_status' => null,
+  'purok_zone' => null, 'household_size' => null, 'number_of_dependents' => null,
+  'is_household_head' => null, 'is_solo_parent' => null, 'is_pwd' => null, 'is_4ps_member' => null,
+  'years_of_residency' => null, 'educational_attainment' => null, 'employment_status' => null,
+  'occupation' => null, 'monthly_income_bracket' => null, 'skills' => null,
+  'work_experience_years' => null, 'training_certifications' => null, 'work_availability' => null,
+  'has_drivers_license' => null
+];
 $db = get_db();
-$profileStmt = $db->prepare('SELECT fname, lname, address, contact, username, profile_photo FROM residents WHERE id = ? LIMIT 1');
+$profileStmt = $db->prepare('SELECT fname, lname, address, contact, username, profile_photo, created_at, birthdate, civil_status, purok_zone, household_size, number_of_dependents, is_household_head, is_solo_parent, is_pwd, is_4ps_member, years_of_residency, educational_attainment, employment_status, occupation, monthly_income_bracket, skills, work_experience_years, training_certifications, work_availability, has_drivers_license FROM residents WHERE id = ? LIMIT 1');
 if ($profileStmt) {
   $profileStmt->bind_param('i', $residentId);
   $profileStmt->execute();
@@ -301,7 +313,10 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
 
       <!-- ─── NOTIFICATIONS TAB ─── -->
       <div class="tab-panel" id="tab-notifications">
-        <div class="tab-header"><h2>Notifications</h2></div>
+        <div class="tab-header">
+          <h2>Notifications</h2>
+          <button type="button" class="btn-primary-action" id="markAllReadBtn"><i class="fa-solid fa-check-double"></i> Mark all as read</button>
+        </div>
         <div class="card">
           <div class="notif-list" id="notifList"></div>
         </div>
@@ -319,7 +334,7 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
             <?php endif; ?>
             <div class="profile-name-big"><?= htmlspecialchars($residentName, ENT_QUOTES, 'UTF-8') ?></div>
             <div class="profile-role-badge"><i class="fa-solid fa-circle-check"></i> Verified Resident</div>
-            <div class="profile-since">Member since —</div>
+            <div class="profile-since">Member since — <?= $residentProfile['created_at'] ? e(date('F Y', strtotime($residentProfile['created_at']))) : 'Not provided' ?></div>
             <form id="profilePhotoForm" class="profile-photo-form" enctype="multipart/form-data">
               <label for="profilePhotoInput" class="btn-submit-form">Change Photo</label>
               <input id="profilePhotoInput" type="file" name="photo" accept="image/jpeg,image/png" hidden />
@@ -338,6 +353,30 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
                 <div class="field"><label>Mobile</label><div class="profile-readonly"><?= htmlspecialchars($residentProfile['contact'], ENT_QUOTES, 'UTF-8') ?></div></div>
               </div>
               <div class="field"><label>Home Address</label><div class="profile-readonly"><?= htmlspecialchars($residentProfile['address'], ENT_QUOTES, 'UTF-8') ?></div></div>
+            </div>
+            <h3 class="card-section-title profile-additional-title">Additional Information</h3>
+            <div class="profile-form">
+              <?php
+                $profileFields = [
+                  'birthdate' => 'Birthdate', 'civil_status' => 'Civil Status', 'purok_zone' => 'Purok / Zone',
+                  'household_size' => 'Household Size', 'number_of_dependents' => 'Dependents',
+                  'is_household_head' => 'Household Head', 'is_solo_parent' => 'Solo Parent',
+                  'is_pwd' => 'PWD', 'is_4ps_member' => '4Ps Member', 'years_of_residency' => 'Years of Residency',
+                  'educational_attainment' => 'Educational Attainment', 'employment_status' => 'Employment Status',
+                  'occupation' => 'Occupation', 'monthly_income_bracket' => 'Income Bracket', 'skills' => 'Skills',
+                  'work_experience_years' => 'Work Experience (years)', 'training_certifications' => 'Certifications',
+                  'work_availability' => 'Work Availability', 'has_drivers_license' => "Driver's License"
+                ];
+                foreach ($profileFields as $field => $label):
+                  $value = $residentProfile[$field] ?? null;
+                  if (in_array($field, ['is_household_head', 'is_solo_parent', 'is_pwd', 'is_4ps_member', 'has_drivers_license'], true)) {
+                    $value = $value === null ? null : ((int)$value === 1 ? 'Yes' : 'No');
+                  }
+                  if ($field === 'birthdate' && $value) $value = date('F j, Y', strtotime($value));
+                  if ($value === null || $value === '') $value = 'Not provided';
+              ?>
+                <div class="field"><label><?= e($label) ?></label><div class="profile-readonly"><?= e($value) ?></div></div>
+              <?php endforeach; ?>
             </div>
           </div>
         </div>

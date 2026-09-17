@@ -39,6 +39,11 @@ generated_documents/*
 profile_img/*
 !profile_img/README.txt
 !profile_img/b_official/
+profile_img/b_official/*
 !profile_img/b_official/.htaccess
+!profile_img/b_official/README.txt
+!profile_img/residents/
+profile_img/residents/*
+!profile_img/residents/README.txt
 
 source-code.txt

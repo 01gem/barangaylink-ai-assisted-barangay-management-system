@@ -315,6 +315,21 @@ function renderNotifications() {
   if (drawerList) drawerList.innerHTML = html;
 }
 
+async function markAllNotificationsRead() {
+  const button = document.getElementById('markAllReadBtn');
+  if (button) button.disabled = true;
+  try {
+    await fetchJson(`${API_BASE}/notifications/mark_all_read.php`, { method: 'POST' });
+    await loadNotifications();
+    await refreshResidentView();
+    showToast('Notifications Updated', 'All notifications are marked as read.');
+  } catch (err) {
+    showToast('Update Failed', err.message);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 function markRead(id) {
   const allNotifs = getAllNotifications();
   const n = allNotifs.find(x => x.id === id);
@@ -334,6 +349,10 @@ function initNotifDrawer() {
   toggle?.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('show'); });
   close?.addEventListener('click',  () => { drawer.classList.remove('open'); overlay.classList.remove('show'); });
   overlay?.addEventListener('click',() => { drawer.classList.remove('open'); overlay.classList.remove('show'); });
+}
+
+function initMarkAllRead() {
+  document.getElementById('markAllReadBtn')?.addEventListener('click', markAllNotificationsRead);
 }
 
 function mapRequestRow(row) {
@@ -649,6 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initReqFormToggle();
   initComplaintFormToggle();
   initNotifDrawer();
+  initMarkAllRead();
   initProfilePhotoUpload();
   (async () => {
     try {

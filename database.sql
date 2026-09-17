@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS `residents` (
   -- System-computed profiling fields
   `skill_category` VARCHAR(50) NULL,
   `eligibility_score` INT DEFAULT 0,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS `document_requests` (
   `purpose` varchar(150) NOT NULL,
   `date_requested` varchar(30) NOT NULL,
   `status` varchar(30) NOT NULL DEFAULT 'pending',
+  `generated_document_path` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `reference_no` (`reference_no`),
   FOREIGN KEY (`resident_id`) REFERENCES `residents`(`id`)

@@ -120,9 +120,6 @@ function initPasswordReset() {
     });
   });
   document.getElementById('resetClose')?.addEventListener('click', close);
-  overlay?.addEventListener('click', event => {
-    if (event.target === overlay) close();
-  });
   requestForm?.addEventListener('submit', async event => {
     event.preventDefault();
     const button = document.getElementById('sendResetCodeBtn');

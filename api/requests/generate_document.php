@@ -207,9 +207,21 @@ remove_dir_tree($tempDir);
 $pdfRelativePath = '../generated_documents/' . rawurlencode($referenceNo) . '.pdf';
 $docxRelativePath = '../generated_documents/' . rawurlencode($referenceNo) . '.docx';
 
+$storedPath = 'generated_documents/' . $referenceNo . '.pdf';
+$pathStmt = $db->prepare('UPDATE document_requests SET generated_document_path = ? WHERE id = ?');
+if (!$pathStmt) json_error('Failed to persist generated document path.', 500);
+$pathStmt->bind_param('si', $storedPath, $requestId);
+if (!$pathStmt->execute()) {
+  $error = $pathStmt->error;
+  $pathStmt->close();
+  json_error('Failed to persist generated document path: ' . $error, 500);
+}
+$pathStmt->close();
+
 json_success([
   'pdf_path' => $pdfRelativePath,
   'docx_path' => $docxRelativePath,
+  'generated_document_path' => 'generated_documents/' . $referenceNo . '.pdf',
   'reference_no' => (string)$request['reference_no'],
 ]);
 ?>

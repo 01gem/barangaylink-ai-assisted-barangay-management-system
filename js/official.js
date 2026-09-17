@@ -48,6 +48,7 @@ function switchTab(name) {
     plaqueIcon.className = `fa-solid ${plaque.icon}`;
     plaqueText.textContent = plaque.label;
   }
+
   try {
     sessionStorage.setItem(ACTIVE_SECTION_KEY, name);
   } catch (err) {
@@ -275,7 +276,7 @@ function renderResidents(data) {
       <td><span class="status-badge status-${r.status === 'active' ? 'verified' : 'suspended'}">${escapeAttribute(r.status)}</span></td>
       <td class="action-column">
         <div class="action-btns">
-          <button class="btn-action view" onclick="showModal('Resident Profile','${escapeAttribute(r.name)} — ${escapeAttribute(r.addr)} — ${escapeAttribute(r.contact)} — Status: ${escapeAttribute(r.status)}')">View</button>
+          <button class="btn-action view" onclick="showResidentProfile(${r.dbId})">View</button>
           <button class="btn-action process" onclick="openEditResidentForm(${r.dbId})">Edit</button>
           <button class="btn-action ${r.status === 'active' ? 'reject' : 'approve'}" onclick="toggleResidentStatus(${r.dbId})">${toggleLabel}</button>
         </div>
@@ -316,8 +317,8 @@ function renderDocRequests(data) {
             ${r.status === 'processing' ? `<button class="btn-action ready"   onclick="updateReqStatus('${r.ref}','ready')">Mark Ready</button>` : ''}
             ${['pending', 'processing'].includes(r.status) ? `<button class="btn-action reject" onclick="cancelReq('${r.ref}')">Cancel Request</button>` : ''}
             ${r.status === 'ready'      ? `<button class="btn-action approve" onclick="updateReqStatus('${r.ref}','completed')">Complete</button>` : ''}
-            ${r.status === 'ready'      ? `<button class="btn-action notify"  onclick="notifyPickupReady('${r.ref}')">Notify via SMS</button>` : ''}
-            <button class="btn-action view" onclick="showModal('Request Details','${r.ref} — ${r.resident} — ${r.type}')">View</button>
+            ${r.status === 'ready'      ? `<button class="btn-action notify"  onclick="notifyPickupReady('${escapeAttribute(r.ref)}')">Notify via SMS</button>` : ''}
+            <button class="btn-action view" onclick="showRequestDetails(${r.id})">View</button>
           </div>
         </td>
     </tr>
@@ -388,6 +389,7 @@ function closeDocumentGenerationModal() {
   if (fieldsWrap) fieldsWrap.innerHTML = '';
   if (previewWrap) previewWrap.style.display = 'none';
   if (previewEmpty) previewEmpty.style.display = 'flex';
+  if (previewEmpty) previewEmpty.textContent = 'Generate a document to see its PDF preview here.';
   if (previewFrame) previewFrame.src = 'about:blank';
   ACTIVE_DOC_GEN_REQUEST = null;
 }
@@ -453,6 +455,15 @@ async function generateAndPreviewDocument() {
   fields.official_name = FIXED_OFFICIAL_NAME;
   fields.official_position = FIXED_OFFICIAL_POSITION;
 
+  const previewEmpty = document.getElementById('docGenPreviewEmpty');
+  const previewWrap = document.getElementById('docGenPreviewWrap');
+  const previewFrame = document.getElementById('docGenPreviewFrame');
+  if (previewWrap) previewWrap.style.display = 'none';
+  if (previewFrame) previewFrame.src = 'about:blank';
+  if (previewEmpty) {
+    previewEmpty.innerHTML = '<span class="docgen-loading"><i class="fa-solid fa-spinner fa-spin"></i> Generating document...</span>';
+    previewEmpty.style.display = 'flex';
+  }
   try {
     const data = await fetchJson(`${API_BASE}/requests/generate_document.php`, {
       method: 'POST',
@@ -463,9 +474,6 @@ async function generateAndPreviewDocument() {
       })
     });
 
-    const previewFrame = document.getElementById('docGenPreviewFrame');
-    const previewWrap = document.getElementById('docGenPreviewWrap');
-    const previewEmpty = document.getElementById('docGenPreviewEmpty');
     if (previewFrame && data.pdf_path) {
       const separator = data.pdf_path.includes('?') ? '&' : '?';
       previewFrame.src = `${data.pdf_path}${separator}t=${Date.now()}`;
@@ -476,6 +484,10 @@ async function generateAndPreviewDocument() {
     await updateReqStatus(ACTIVE_DOC_GEN_REQUEST.ref, 'processing');
     showToastAdmin('Document Generated', `Generated PDF for ${ACTIVE_DOC_GEN_REQUEST.ref}.`);
   } catch (err) {
+    if (previewEmpty) {
+      previewEmpty.textContent = `Generation failed: ${err.message}`;
+      previewEmpty.style.display = 'flex';
+    }
     showToastAdmin('Generation Failed', err.message);
   }
 }
@@ -658,7 +670,9 @@ function mapRequestRow(row) {
     type: row.document_type,
     purpose: row.purpose,
     date: row.date_requested,
-    status: row.status
+    status: row.status,
+    generatedDocumentPath: row.generated_document_path || '',
+    dateCompleted: row.date_completed || row.date_processed || ''
   };
 }
 
@@ -1375,12 +1389,61 @@ function showModal(title, body) {
       <h3 style="font-size:1.3rem;font-weight:600">${title}</h3>
       <button onclick="closeModal()" style="background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <p style="font-size:14px;color:var(--text-2);line-height:1.7;margin-bottom:20px">${body}<br><br><em style="color:var(--text-3);font-size:12px">[In the full system, this shows a complete detail view with full history and action controls.]</em></p>
+    <div style="font-size:14px;color:var(--text-2);line-height:1.7;margin-bottom:20px">${body}</div>
     <button onclick="closeModal()" style="padding:9px 24px;background:var(--blue-mid);color:white;border:none;border-radius:7px;font-family:'Jost',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Close</button>
   `;
   document.getElementById('actionModal').classList.add('show');
 }
 function closeModal() { document.getElementById('actionModal').classList.remove('show'); }
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function displayValue(value) {
+  return value === null || value === undefined || value === '' ? 'Not provided' : escapeHtml(value);
+}
+
+function profileDetailField(label, value) {
+  return `<div class="detail-field"><dt>${escapeHtml(label)}</dt><dd>${displayValue(value)}</dd></div>`;
+}
+
+function showResidentProfile(dbId) {
+  const resident = RESIDENTS.find(item => Number(item.dbId) === Number(dbId));
+  if (!resident) return;
+  const yesNo = value => value === null || value === undefined || value === '' ? 'Not provided' : (Number(value) === 1 ? 'Yes' : 'No');
+  const photo = resident.profilePhoto
+    ? `<img class="resident-detail-photo" src="../${escapeAttribute(resident.profilePhoto)}" alt="Profile photo" />`
+    : `<span class="resident-detail-initials">${escapeHtml(getInitials(resident.name))}</span>`;
+  showModal('Resident Profile', `
+    <div class="resident-detail-head">${photo}<div><h4>${displayValue(resident.name)}</h4><span>${displayValue(resident.status)}</span></div></div>
+    <h4 class="detail-group-title">Identity</h4><dl class="detail-grid">
+      ${profileDetailField('Address', resident.addr)}${profileDetailField('Contact', resident.contact)}${profileDetailField('Username', resident.username)}${profileDetailField('Status', resident.status)}
+    </dl>
+    <h4 class="detail-group-title">Household &amp; Demographics</h4><dl class="detail-grid">
+      ${profileDetailField('Birthdate', resident.birthdate)}${profileDetailField('Civil Status', resident.civil_status)}${profileDetailField('Purok / Zone', resident.purok_zone)}${profileDetailField('Household Size', resident.household_size)}${profileDetailField('Dependents', resident.number_of_dependents)}${profileDetailField('Household Head', yesNo(resident.is_household_head))}${profileDetailField('Solo Parent', yesNo(resident.is_solo_parent))}${profileDetailField('PWD', yesNo(resident.is_pwd))}${profileDetailField('4Ps Member', yesNo(resident.is_4ps_member))}${profileDetailField('Years of Residency', resident.years_of_residency)}
+    </dl>
+    <h4 class="detail-group-title">Livelihood &amp; Skills</h4><dl class="detail-grid">
+      ${profileDetailField('Educational Attainment', resident.educational_attainment)}${profileDetailField('Employment Status', resident.employment_status)}${profileDetailField('Occupation', resident.occupation)}${profileDetailField('Income Bracket', resident.monthly_income_bracket)}${profileDetailField('Skills', resident.skills)}${profileDetailField('Work Experience (years)', resident.work_experience_years)}${profileDetailField('Certifications', resident.training_certifications)}${profileDetailField('Work Availability', resident.work_availability)}${profileDetailField("Driver's License", yesNo(resident.has_drivers_license))}
+    </dl>`);
+}
+
+function showRequestDetails(requestId) {
+  const request = DOC_REQUESTS.find(item => Number(item.id) === Number(requestId));
+  if (!request) return;
+  const canViewGenerated = request.generatedDocumentPath && request.status !== 'completed';
+  const generatedUrl = canViewGenerated ? `../${request.generatedDocumentPath.replace(/^\.?\//, '')}` : '';
+  showModal('Request Details', `
+    <dl class="detail-grid request-detail-grid">
+      ${profileDetailField('Reference Number', request.ref)}${profileDetailField('Resident', request.resident)}${profileDetailField('Document Type', request.type)}${profileDetailField('Purpose', request.purpose)}${profileDetailField('Status', request.status)}${profileDetailField('Date Requested', request.date)}${profileDetailField('Date Completed / Processed', request.dateCompleted)}
+    </dl>
+    ${canViewGenerated ? `<div class="generated-document-preview"><a class="btn-action approve" href="${escapeAttribute(generatedUrl)}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf"></i> View Generated Document</a><iframe title="Generated document preview" src="${escapeAttribute(generatedUrl)}"></iframe></div>` : ''}`);
+}
 
 // ── TOAST ─────────────────────────────────
 let toastTimeout;

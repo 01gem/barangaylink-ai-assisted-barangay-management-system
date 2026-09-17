@@ -578,6 +578,10 @@ textarea.form-input { resize: vertical; line-height: 1.6; }
   padding: 4px 12px; border-radius: 100px; margin: 8px auto 6px;
 }
 .profile-since { font-size: 12px; color: var(--text-3); }
+.profile-additional-title { margin-top: 26px; }
+.profile-grid .profile-form { display: grid; gap: 12px; }
+.profile-grid .profile-form > .form-2col { margin-bottom: 0; }
+.profile-grid .profile-form > .field { min-width: 0; }
 .card-section-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 
 /* ── NOTIFICATION DRAWER ─────────────────── */
