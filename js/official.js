@@ -498,6 +498,34 @@ function initDocumentGenerationModal() {
   document.getElementById('generateDocBtn')?.addEventListener('click', generateAndPreviewDocument);
 }
 
+function initAiEchoTest() {
+  const promptInput = document.getElementById('aiEchoPrompt');
+  const sendButton = document.getElementById('aiEchoSendBtn');
+  const responseArea = document.getElementById('aiEchoResponse');
+  if (!promptInput || !sendButton || !responseArea) return;
+
+  sendButton.addEventListener('click', async () => {
+    sendButton.disabled = true;
+    responseArea.className = 'ai-echo-response is-loading';
+    responseArea.textContent = 'Waiting for AI response...';
+
+    try {
+      const data = await fetchJson(`${API_BASE}/ai/echo_test.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptInput.value.trim() })
+      });
+      responseArea.className = 'ai-echo-response is-success';
+      responseArea.textContent = data.reply || 'AI returned an empty reply.';
+    } catch (err) {
+      responseArea.className = 'ai-echo-response is-error';
+      responseArea.textContent = `Connectivity test failed: ${err.message}`;
+    } finally {
+      sendButton.disabled = false;
+    }
+  });
+}
+
 function findResidentContactForRequest(req) {
   if (!req) return '';
   if (req.residentId) {
@@ -1484,6 +1512,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAnnouncementForm();
   initServiceForm();
   initDocumentGenerationModal();
+  initAiEchoTest();
   renderAuditLog();
   (async () => {
     try {

@@ -29,7 +29,7 @@ role-based staff/admin access.
 
 | 👥 Residents | 📄 Documents | 📣 Announcements | 📱 SMS | 🤖 AI Gateway |
 |:---:|:---:|:---:|:---:|:---:|
-| Portal access | Word/PDF generation | Public updates | OTP & alerts | OmniRoute |
+| Portal access | Word/PDF generation | Public updates | OTP & alerts | Gemini AI |
 
 </div>
 
@@ -44,7 +44,7 @@ role-based staff/admin access.
 | 🏛️ **Official portal** | Request processing, resident management, complaints, announcements, and local services |
 | 👑 **Admin tools** | Official account management and complete audit-log access |
 | 📲 **SMS notifications** | Status updates, complaint resolution, announcement broadcasts, and OTP recovery via [httpSMS](https://httpsms.com) |
-| 🤖 **AI connectivity** | OpenAI-compatible diagnostic requests through OmniRoute |
+| 🤖 **AI connectivity** | Gemini diagnostic requests through the AI Analyst endpoint |
 | 📄 **Document generation** | Word-template filling and PDF conversion through LibreOffice |
 | 🧾 **Audit logging** | Official write actions are recorded for traceability |
 | 🔐 **Authentication** | Username + password only; no email-based accounts |
@@ -60,7 +60,7 @@ role-based staff/admin access.
 | Database | MySQL / MariaDB |
 | Frontend | Vanilla HTML/CSS/JavaScript |
 | SMS | [httpSMS](https://httpsms.com) API |
-| AI gateway | OmniRoute OpenAI-compatible API |
+| AI gateway | Google Gemini API |
 | Document generation | PHP `ZipArchive` (docx templating) + [LibreOffice](https://www.libreoffice.org/) headless (PDF conversion) |
 
 No Composer or npm dependencies — the project runs as-is once the prerequisites below are installed.
@@ -91,7 +91,7 @@ You need **all** of the following installed and working before this project will
   - `extension=zip` — required for document generation (template placeholder filling). The app will return a clear error if this is missing.
   - `extension=fileinfo` — required for profile photo upload validation
   - `extension=gd` — used for image validation on photo upload
-  - `extension=curl` — required for httpSMS and OmniRoute API requests
+  - `extension=curl` — required for httpSMS and Gemini API requests
 - Restart Apache after enabling any extension.
 
 ### 2. LibreOffice (required — document generation will not work without it)
@@ -129,12 +129,11 @@ You need **all** of the following installed and working before this project will
    HTTPSMS_API_KEY=your_httpsms_api_key
    HTTPSMS_FROM_NUMBER=+63XXXXXXXXXX
    HTTPSMS_SIM_SLOT=SIM1
-   OMNIROUTE_API_KEY=your_omniroute_api_key
-   OMNIROUTE_BASE_URL=https://omni.inamoriyama.com/v1
+   GEMINI_API_KEY=your_gemini_api_key
    ```
    (`.env.sms` is also supported as an alternate/legacy filename — `db.php` loads both if present.)
-   OmniRoute settings are optional unless you use the AI diagnostic endpoint. The API key
-   is read server-side only and must never be placed in browser JavaScript or committed.
+   Gemini settings are required for the AI diagnostic endpoint. The API key is read
+   server-side only and must never be placed in browser JavaScript or committed.
 
 4. **Confirm the LibreOffice path.**
    Open `api/requests/generate_document.php` and confirm `$sofficePath` matches your
@@ -163,7 +162,7 @@ You need **all** of the following installed and working before this project will
 │  ├─ audit/               ├─ residents/            ├─ services/
 │  ├─ auth/                (OTP recovery)           ├─ stats/
 │  ├─ complaints/          ├─ notifications/
-│  ├─ ai/                  (OmniRoute diagnostic endpoint)
+│  ├─ ai/                  (AI diagnostic endpoint)
 ├─ pages/                Login + resident/official dashboards
 ├─ js/  css/             Frontend logic and styling per page
 ├─ document_templates/  Local Word (.docx) templates (files are git-ignored)
@@ -174,10 +173,10 @@ You need **all** of the following installed and working before this project will
 └─ index.php              Public landing page
 ```
 
-## 🔌 OmniRoute Diagnostic Test
+## 🔌 AI Diagnostic Test
 
-OmniRoute is currently connected only to the admin diagnostic endpoint. It does not
-automatically route normal application requests or this project's conversations.
+The AI service is currently connected only to diagnostic endpoints. It does not
+automatically process normal application requests or this project's conversations.
 
 With an authenticated admin official session, send a JSON `POST` request to:
 
@@ -192,8 +191,8 @@ Content-Type: application/json
 }
 ```
 
-The endpoint reads `OMNIROUTE_API_KEY` and `OMNIROUTE_BASE_URL` from the server-side
-`.env` file and calls `omniroute_chat()` from [api/common.php](api/common.php).
+The endpoint reads `GEMINI_API_KEY` from the server-side `.env` file and calls
+`ai_chat()` from [api/common.php](api/common.php).
 
 ---
 
@@ -210,11 +209,11 @@ The endpoint reads `OMNIROUTE_API_KEY` and `OMNIROUTE_BASE_URL` from the server-
   accounts and see the full audit log; staff see only their own audit history.
 - **Password recovery** is OTP-based via SMS (10-minute expiry, single-use codes) —
   there is no email-based "forgot password" flow.
-- **OmniRoute diagnostic testing** is available at `api/ai/test.php`. It requires an
+- **AI diagnostic testing** is available at `api/ai/test.php`. It requires an
   authenticated admin official session and a `POST` request. Send JSON such as
-  `{"prompt":"Reply with a short confirmation."}`. The endpoint calls OmniRoute
-  through `omniroute_chat()` in `api/common.php`; it does not route ordinary
-  application requests or this project's user conversations through OmniRoute.
+  `{"prompt":"Reply with a short confirmation."}`. The endpoint calls Gemini
+  through `ai_chat()` in `api/common.php`; it does not process ordinary
+  application requests or this project's user conversations through the AI service.
 
 ---
 
@@ -226,10 +225,10 @@ production hosting. Before deploying anywhere reachable outside your local machi
 - Move database credentials in `db.php` out of hardcoded values into `.env`
 - Never commit a real `.env` / `.env.sms` file — confirm `.gitignore` excludes them
   (it does by default in this repo) and that no API keys ever end up in git history
-- Keep `OMNIROUTE_API_KEY` server-side. Do not expose it in frontend code, URLs, logs,
+- Keep `GEMINI_API_KEY` server-side. Do not expose it in frontend code, URLs, logs,
   or API responses. Rotate the key immediately if it is accidentally disclosed.
-- OmniRoute is currently used only by the admin diagnostic endpoint; adding other AI
-  features should route through a server-side PHP endpoint and `omniroute_chat()`.
+- Gemini is currently used only by the admin diagnostic endpoint; adding other AI
+  features should route through a server-side PHP endpoint and `ai_chat()`.
 - Review file upload limits/validation in `api/residents/upload_photo.php` and
   `generated_documents/` / `profile_img/` folder permissions for a hardened deployment
 - `document_type` on `document_requests` is free text (no enum/check constraint) —

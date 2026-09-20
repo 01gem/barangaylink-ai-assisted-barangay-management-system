@@ -83,57 +83,68 @@ function log_audit(
   return $ok;
 }
 
-function omniroute_chat(string $userMessage, string $systemPrompt = '', string $model = 'auto'): array {
-  $apiKey = getenv('OMNIROUTE_API_KEY') ?: '';
-  $baseUrl = rtrim(getenv('OMNIROUTE_BASE_URL') ?: '', '/');
+function ai_chat(string $userMessage, string $systemPrompt = '', string $model = 'auto'): array {
+  $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: ''));
+  $modelName = $model !== '' && $model !== 'auto' ? $model : 'gemini-3.6-flash';
 
-  if ($apiKey === '' || $baseUrl === '') {
-    return ['success' => false, 'error' => 'Omniroute is not configured (missing OMNIROUTE_API_KEY or OMNIROUTE_BASE_URL).'];
+  if ($apiKey === '') {
+    return ['success' => false, 'error' => 'Gemini is not configured (missing GEMINI_API_KEY).'];
   }
-
-  $messages = [];
-  if ($systemPrompt !== '') {
-    $messages[] = ['role' => 'system', 'content' => $systemPrompt];
-  }
-  $messages[] = ['role' => 'user', 'content' => $userMessage];
-
-  $payload = json_encode(['model' => $model, 'messages' => $messages]);
 
   if (!function_exists('curl_init')) {
     return ['success' => false, 'error' => 'cURL extension is not enabled.'];
   }
 
-  $ch = curl_init($baseUrl . '/chat/completions');
+  $contents = [
+    ['parts' => [['text' => $userMessage]]],
+  ];
+  $payload = ['contents' => $contents];
+  if ($systemPrompt !== '') {
+    $payload['systemInstruction'] = ['parts' => [['text' => $systemPrompt]]];
+  }
+
+  $encodedPayload = json_encode($payload);
+  if ($encodedPayload === false) {
+    return ['success' => false, 'error' => 'Could not encode the Gemini request.'];
+  }
+
+  $url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+    . rawurlencode($modelName)
+    . ':generateContent?key='
+    . rawurlencode($apiKey);
+  $ch = curl_init($url);
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => [
-      'Content-Type: application/json',
-      'Authorization: Bearer ' . $apiKey,
-    ],
-    CURLOPT_POSTFIELDS => $payload,
-    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_POSTFIELDS => $encodedPayload,
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_TIMEOUT => 15,
   ]);
 
   $response = curl_exec($ch);
   if ($response === false) {
-    $error = curl_error($ch);
+    $curlError = curl_error($ch);
     curl_close($ch);
-    return ['success' => false, 'error' => 'Omniroute request failed: ' . $error];
+    return ['success' => false, 'error' => 'Gemini request failed: ' . $curlError];
   }
+
   $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
   curl_close($ch);
-
   $decoded = json_decode($response, true);
-  if ($httpStatus < 200 || $httpStatus >= 300 || !is_array($decoded)) {
-    return ['success' => false, 'error' => 'Omniroute returned HTTP ' . $httpStatus, 'raw' => $response];
+
+  if ($httpStatus < 200 || $httpStatus >= 300) {
+    return ['success' => false, 'error' => 'Gemini returned HTTP ' . $httpStatus . '.'];
+  }
+  if (!is_array($decoded)) {
+    return ['success' => false, 'error' => 'Gemini returned an invalid response.'];
   }
 
-  $content = $decoded['choices'][0]['message']['content'] ?? null;
-  if ($content === null) {
-    return ['success' => false, 'error' => 'Unexpected Omniroute response shape.', 'raw' => $decoded];
+  $content = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? null;
+  if (!is_string($content) || trim($content) === '') {
+    return ['success' => false, 'error' => 'Gemini returned no text response.'];
   }
 
-  return ['success' => true, 'content' => $content, 'model' => $decoded['model'] ?? $model];
+  return ['success' => true, 'content' => $content, 'model' => $modelName];
 }
 ?>
