@@ -480,14 +480,25 @@ if (count($officialNameParts) >= 2) {
       <!-- ─── AI ANALYST ─── -->
       <div class="tab-panel" id="tab-aianalyst">
         <div class="tab-header"><h2><i class="fa-solid fa-brain"></i> AI Analyst</h2></div>
-        <div class="card ai-echo-test-card">
-          <p class="ai-echo-test-note">Temporary connectivity test. Full AI features are still in development.</p>
-          <label for="aiEchoPrompt">Test prompt</label>
-          <div class="ai-echo-test-controls">
-            <input id="aiEchoPrompt" type="text" value="Say hello and confirm you are working correctly." maxlength="2000">
-            <button id="aiEchoSendBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-paper-plane"></i> Send Test Prompt</button>
+        <div class="card vulnerability-registry-card">
+          <div class="registry-header">
+            <div>
+              <h3><i class="fa-solid fa-shield-halved"></i> Vulnerability Registry</h3>
+              <p>Rule-based eligibility scores from resident profiling data. Higher scores indicate greater vulnerability.</p>
+            </div>
+            <button id="recalculateScoresBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-rotate"></i> Recalculate All Scores</button>
           </div>
-          <div id="aiEchoResponse" class="ai-echo-response" role="status" aria-live="polite">No response yet.</div>
+          <div class="table-toolbar">
+            <select id="vulnerabilityPurokFilter" class="table-filter" aria-label="Filter vulnerability registry by Purok">
+              <option value="all">All Puroks</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>Purok</th><th>Score</th><th>Top Contributing Factors</th></tr></thead>
+              <tbody id="vulnerabilityRegistryBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 

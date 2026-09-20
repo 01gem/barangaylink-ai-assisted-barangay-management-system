@@ -83,6 +83,44 @@ function log_audit(
   return $ok;
 }
 
+function calculate_eligibility_score(array $resident): int {
+  $score = 0;
+
+  $employment = (string)($resident['employment_status'] ?? '');
+  if ($employment === 'Unemployed') {
+    $score += 30;
+  } elseif ($employment === 'Self-Employed') {
+    $score += 10;
+  }
+
+  $dependents = min((int)($resident['number_of_dependents'] ?? 0), 5);
+  $score += $dependents * 5;
+
+  if (!empty($resident['is_pwd'])) {
+    $score += 20;
+  }
+
+  $birthdate = (string)($resident['birthdate'] ?? '');
+  if ($birthdate !== '') {
+    $birth = DateTime::createFromFormat('Y-m-d', $birthdate);
+    if ($birth !== false) {
+      $age = (int)(new DateTime())->diff($birth)->y;
+      if ($age >= 60) {
+        $score += 15;
+      }
+    }
+  }
+
+  $bracket = (string)($resident['monthly_income_bracket'] ?? '');
+  if ($bracket === 'Below 5000') {
+    $score += 20;
+  } elseif ($bracket === '5000-10000') {
+    $score += 10;
+  }
+
+  return min(max($score, 0), 100);
+}
+
 function ai_chat(string $userMessage, string $systemPrompt = '', string $model = 'auto'): array {
   $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: ''));
   $modelName = $model !== '' && $model !== 'auto' ? $model : 'gemini-3.6-flash';

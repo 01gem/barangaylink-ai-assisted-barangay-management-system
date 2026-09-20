@@ -498,34 +498,6 @@ function initDocumentGenerationModal() {
   document.getElementById('generateDocBtn')?.addEventListener('click', generateAndPreviewDocument);
 }
 
-function initAiEchoTest() {
-  const promptInput = document.getElementById('aiEchoPrompt');
-  const sendButton = document.getElementById('aiEchoSendBtn');
-  const responseArea = document.getElementById('aiEchoResponse');
-  if (!promptInput || !sendButton || !responseArea) return;
-
-  sendButton.addEventListener('click', async () => {
-    sendButton.disabled = true;
-    responseArea.className = 'ai-echo-response is-loading';
-    responseArea.textContent = 'Waiting for AI response...';
-
-    try {
-      const data = await fetchJson(`${API_BASE}/ai/echo_test.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptInput.value.trim() })
-      });
-      responseArea.className = 'ai-echo-response is-success';
-      responseArea.textContent = data.reply || 'AI returned an empty reply.';
-    } catch (err) {
-      responseArea.className = 'ai-echo-response is-error';
-      responseArea.textContent = `Connectivity test failed: ${err.message}`;
-    } finally {
-      sendButton.disabled = false;
-    }
-  });
-}
-
 function findResidentContactForRequest(req) {
   if (!req) return '';
   if (req.residentId) {
@@ -668,7 +640,8 @@ function mapResidentRow(row) {
     work_experience_years: row.work_experience_years ?? 0,
     training_certifications: row.training_certifications || '',
     work_availability: row.work_availability || '',
-    has_drivers_license: Number(row.has_drivers_license || 0)
+    has_drivers_license: Number(row.has_drivers_license || 0),
+    eligibility_score: Number(row.eligibility_score || 0)
   };
 }
 
@@ -752,6 +725,82 @@ async function loadResidents() {
   const data = await fetchJson(`${API_BASE}/residents/list.php`);
   RESIDENTS = (data.residents || []).map(mapResidentRow);
   renderResidents(RESIDENTS);
+  renderVulnerabilityRegistry();
+}
+
+function calculateRegistryFactors(resident) {
+  const factors = [];
+  const employment = String(resident.employment_status || '');
+  if (employment === 'Unemployed') factors.push({ label: 'Unemployed', points: 30 });
+  if (employment === 'Self-Employed') factors.push({ label: 'Self-employed', points: 10 });
+
+  const dependents = Math.min(Math.max(Number(resident.number_of_dependents) || 0, 0), 5);
+  if (dependents > 0) factors.push({ label: `${dependents} dependents`, points: dependents * 5 });
+  if (Number(resident.is_pwd)) factors.push({ label: 'PWD', points: 20 });
+
+  const birthdate = String(resident.birthdate || '');
+  if (birthdate) {
+    const birth = new Date(`${birthdate}T00:00:00`);
+    if (!Number.isNaN(birth.getTime())) {
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const beforeBirthday = today.getMonth() < birth.getMonth()
+        || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+      if (beforeBirthday) age--;
+      if (age >= 60) factors.push({ label: 'Senior (60+)', points: 15 });
+    }
+  }
+
+  if (resident.monthly_income_bracket === 'Below 5000') factors.push({ label: 'Income below 5000', points: 20 });
+  if (resident.monthly_income_bracket === '5000-10000') factors.push({ label: 'Income 5000-10000', points: 10 });
+  return factors.sort((a, b) => b.points - a.points);
+}
+
+function renderVulnerabilityRegistry() {
+  const tbody = document.getElementById('vulnerabilityRegistryBody');
+  const filter = document.getElementById('vulnerabilityPurokFilter');
+  if (!tbody || !filter) return;
+
+  const puroks = [...new Set(RESIDENTS.map(r => r.purok_zone).filter(Boolean))].sort();
+  const selected = filter.value;
+  filter.innerHTML = '<option value="all">All Puroks</option>'
+    + puroks.map(purok => `<option value="${escapeAttribute(purok)}">${escapeHtml(purok)}</option>`).join('');
+  filter.value = puroks.includes(selected) ? selected : 'all';
+
+  const rows = RESIDENTS
+    .filter(resident => filter.value === 'all' || resident.purok_zone === filter.value)
+    .sort((a, b) => Number(b.eligibility_score) - Number(a.eligibility_score));
+  tbody.innerHTML = rows.length ? rows.map(resident => {
+    const factors = calculateRegistryFactors(resident).slice(0, 3)
+      .map(factor => `${factor.label} +${factor.points}`).join(', ') || 'No contributing factors';
+    return `<tr>
+      <td style="font-weight:600;color:var(--text)">${escapeHtml(resident.name)}</td>
+      <td>${escapeHtml(resident.purok_zone || 'Not provided')}</td>
+      <td><span class="vulnerability-score">${Number(resident.eligibility_score) || 0}</span></td>
+      <td>${escapeHtml(factors)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="4" class="registry-empty">No residents match this Purok.</td></tr>';
+}
+
+function initVulnerabilityRegistry() {
+  const filter = document.getElementById('vulnerabilityPurokFilter');
+  const button = document.getElementById('recalculateScoresBtn');
+  filter?.addEventListener('change', renderVulnerabilityRegistry);
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    button.textContent = 'Recalculating...';
+    try {
+      const data = await fetchJson(`${API_BASE}/residents/recalculate_all_scores.php`, { method: 'POST' });
+      await loadResidents();
+      showToastAdmin('Scores Recalculated', `${data.updated || 0} resident scores updated.`);
+    } catch (err) {
+      showToastAdmin('Recalculation Failed', err.message);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = '<i class="fa-solid fa-rotate"></i> Recalculate All Scores';
+    }
+  });
+  renderVulnerabilityRegistry();
 }
 
 async function loadRequests() {
@@ -1512,7 +1561,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAnnouncementForm();
   initServiceForm();
   initDocumentGenerationModal();
-  initAiEchoTest();
+  initVulnerabilityRegistry();
   renderAuditLog();
   (async () => {
     try {

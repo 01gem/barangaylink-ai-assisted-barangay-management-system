@@ -14,7 +14,7 @@ $sql = "SELECT id, fname, lname, address, contact, username, profile_photo, stat
   is_household_head, is_solo_parent, is_pwd, is_4ps_member, years_of_residency,
   educational_attainment, employment_status, occupation, monthly_income_bracket,
   skills, work_experience_years, training_certifications, work_availability,
-  has_drivers_license
+  has_drivers_license, eligibility_score
   FROM residents ORDER BY id DESC";
 $stmt = $db->prepare($sql);
 if (!$stmt) json_error('Failed to prepare residents query.', 500);
@@ -22,4 +22,3 @@ $rows = db_query_all($stmt);
 $stmt->close();
 
 json_success(['residents' => $rows]);
-?>

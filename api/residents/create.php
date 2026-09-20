@@ -57,14 +57,22 @@ $work_availability = trim((string)($input['work_availability'] ?? '')) ?: null;
 $has_drivers_license = !empty($input['has_drivers_license']) ? 1 : 0;
 
 $hash = password_hash($password, PASSWORD_DEFAULT);
-$insert = $db->prepare("INSERT INTO residents (fname, lname, address, contact, username, password, birthdate, civil_status, purok_zone, household_size, number_of_dependents, is_household_head, is_solo_parent, is_pwd, is_4ps_member, years_of_residency, educational_attainment, employment_status, occupation, monthly_income_bracket, skills, work_experience_years, training_certifications, work_availability, has_drivers_license) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$score = calculate_eligibility_score([
+  'employment_status' => $employment_status,
+  'number_of_dependents' => $number_of_dependents,
+  'is_pwd' => $is_pwd,
+  'birthdate' => $birthdate,
+  'monthly_income_bracket' => $monthly_income_bracket,
+]);
+$insert = $db->prepare("INSERT INTO residents (fname, lname, address, contact, username, password, birthdate, civil_status, purok_zone, household_size, number_of_dependents, is_household_head, is_solo_parent, is_pwd, is_4ps_member, years_of_residency, educational_attainment, employment_status, occupation, monthly_income_bracket, skills, work_experience_years, training_certifications, work_availability, has_drivers_license, eligibility_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 if (!$insert) json_error('Failed to prepare resident insert.', 500);
-$insert->bind_param('sssssssssiiiiiiisssssissi',
+$insert->bind_param('sssssssssiiiiiiisssssissii',
   $fname, $lname, $address, $contact, $username, $hash,
   $birthdate, $civil_status, $purok_zone, $household_size, $number_of_dependents,
   $is_household_head, $is_solo_parent, $is_pwd, $is_4ps_member, $years_of_residency,
   $educational_attainment, $employment_status, $occupation, $monthly_income_bracket,
-  $skills, $work_experience_years, $training_certifications, $work_availability, $has_drivers_license
+  $skills, $work_experience_years, $training_certifications, $work_availability, $has_drivers_license,
+  $score
 );
 if (!$insert->execute()) {
   json_error('Failed to create resident: ' . $insert->error, 500);
