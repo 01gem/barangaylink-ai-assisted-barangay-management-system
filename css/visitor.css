@@ -4,26 +4,28 @@
 ───────────────────────────────────────── */
 
 :root {
-  --navy:        #0B1E45;
-  --navy-dark:   #071332;
-  --blue:        #1565C0;
-  --blue-mid:    #1976D2;
-  --sky:         #0EA5E9;
-  --gold:        #D97706;
-  --gold-light:  #FEF3C7;
-  --surface:     #F7F9FF;
-  --surface-2:   #EEF2FF;
-  --white:       #FFFFFF;
-  --text:        #0B1E45;
-  --text-2:      #475569;
-  --text-3:      #94A3B8;
-  --border:      #E2E8F0;
-  --success:     #059669;
-  --warning:     #D97706;
+  --navy:        #151C2E;
+  --navy-dark:   #0E1423;
+  --blue:        #60A5FA;
+  --blue-mid:    #3B82F6;
+  --sky:         #38BDF8;
+  --gold:        #F59E0B;
+  --gold-light:  #422006;
+  --surface:     #151C2E;
+  --surface-2:   #1E2740;
+  --white:       #E8ECF4;
+  --text:        #E8ECF4;
+  --text-2:      #9AA5B8;
+  --text-3:      #6B7688;
+  --border:      rgba(255,255,255,0.16);
+  --success:     #34D399;
+  --warning:     #FBBF24;
+  --white-rgb:   232,236,244;
+  --black-rgb:   0,0,0;
   --radius:      14px;
   --radius-sm:   8px;
-  --shadow:      0 4px 24px rgba(11,30,69,0.08);
-  --shadow-md:   0 8px 40px rgba(11,30,69,0.13);
+  --shadow:      0 4px 24px rgba(0,0,0,0.28);
+  --shadow-md:   0 8px 40px rgba(0,0,0,0.42);
   --transition:  0.22s ease;
 }
 
@@ -405,7 +407,7 @@ a { text-decoration: none; color: inherit; }
   gap: 1.5rem;
 }
 .announce-card {
-  background: white;
+  background: var(--surface-2);
   border-radius: var(--radius);
   padding: 28px;
   border: 1px solid var(--border);
@@ -441,10 +443,10 @@ a { text-decoration: none; color: inherit; }
   padding: 3px 10px;
   border-radius: 100px;
 }
-.ac-cat.info    { background: #DBEAFE; color: #1D4ED8; }
-.ac-cat.health  { background: #DCFCE7; color: #15803D; }
-.ac-cat.env     { background: #F0FDF4; color: #166534; }
-.ac-cat.safety  { background: #FEF9C3; color: #A16207; }
+.ac-cat.info    { background: rgba(96,165,250,0.15);  color: var(--blue); }
+.ac-cat.health  { background: rgba(52,211,153,0.15);  color: var(--success); }
+.ac-cat.env     { background: rgba(52,211,153,0.10);  color: #6EE7B7; }
+.ac-cat.safety  { background: rgba(251,191,36,0.15);  color: var(--warning); }
 .ac-date {
   font-size: 12px;
   color: var(--text-3);
@@ -477,7 +479,7 @@ a { text-decoration: none; color: inherit; }
   font-weight: 500;
   border: 1px solid var(--border);
   border-radius: 100px;
-  background: white;
+  background: var(--surface-2);
   color: var(--text-2);
   cursor: pointer;
   transition: all var(--transition);
@@ -495,7 +497,7 @@ a { text-decoration: none; color: inherit; }
   margin-top: 1.5rem;
 }
 .service-card {
-  background: white;
+  background: var(--surface-2);
   border-radius: var(--radius);
   padding: 24px;
   border: 1px solid var(--border);
@@ -539,7 +541,7 @@ a { text-decoration: none; color: inherit; }
   font-size: 11px;
   font-weight: 600;
   color: var(--success);
-  background: #DCFCE7;
+  background: rgba(52,211,153,0.15);
   padding: 3px 9px;
   border-radius: 100px;
   margin-bottom: 10px;

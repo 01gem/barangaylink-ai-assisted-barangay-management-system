@@ -123,7 +123,7 @@ function calculate_eligibility_score(array $resident): int {
 
 function ai_chat(string $userMessage, string $systemPrompt = '', string $model = 'auto'): array {
   $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: ''));
-  $modelName = $model !== '' && $model !== 'auto' ? $model : 'gemini-3.6-flash';
+  $modelName = $model !== '' && $model !== 'auto' ? $model : 'gemini-3.8-flash';
 
   if ($apiKey === '') {
     return ['success' => false, 'error' => 'Gemini is not configured (missing GEMINI_API_KEY).'];

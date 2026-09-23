@@ -773,8 +773,8 @@ function renderVulnerabilityRegistry() {
   tbody.innerHTML = rows.length ? rows.map(resident => {
     const factors = calculateRegistryFactors(resident).slice(0, 3)
       .map(factor => `${factor.label} +${factor.points}`).join(', ') || 'No contributing factors';
-    return `<tr>
-      <td style="font-weight:600;color:var(--text)">${escapeHtml(resident.name)}</td>
+    return `<tr class="vulnerability-registry-entry">
+      <td style="font-weight:600">${escapeHtml(resident.name)}</td>
       <td>${escapeHtml(resident.purok_zone || 'Not provided')}</td>
       <td><span class="vulnerability-score">${Number(resident.eligibility_score) || 0}</span></td>
       <td>${escapeHtml(factors)}</td>

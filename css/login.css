@@ -2,25 +2,28 @@
    BARANGAYLINK — LOGIN.CSS
 ───────────────────────────────────────── */
 :root {
-  --navy:      #0B1E45;
-  --navy-dk:   #071332;
-  --blue:      #1565C0;
-  --blue-mid:  #1976D2;
-  --gold:      #D97706;
-  --gold-lt:   #FEF3C7;
-  --surface:   #F7F9FF;
-  --white:     #FFFFFF;
-  --text:      #0B1E45;
-  --text-2:    #475569;
-  --text-3:    #94A3B8;
-  --border:    #E2E8F0;
-  --border-focus: #1976D2;
-  --success:   #059669;
-  --danger:    #EF4444;
+  --navy:      #151C2E;
+  --navy-dk:   #0E1423;
+  --blue:      #60A5FA;
+  --blue-mid:  #3B82F6;
+  --gold:      #F59E0B;
+  --gold-lt:   #422006;
+  --surface:   #151C2E;
+  --surface-2: #1E2740;
+  --white:     #E8ECF4;
+  --text:      #E8ECF4;
+  --text-2:    #9AA5B8;
+  --text-3:    #6B7688;
+  --border:    rgba(255,255,255,0.16);
+  --border-focus: #60A5FA;
+  --success:   #34D399;
+  --danger:    #F87171;
+  --white-rgb: 232,236,244;
+  --black-rgb: 0,0,0;
   --radius:    14px;
   --radius-sm: 8px;
-  --shadow:    0 4px 24px rgba(11,30,69,0.09);
-  --shadow-md: 0 8px 40px rgba(11,30,69,0.14);
+  --shadow:    0 4px 24px rgba(0,0,0,0.28);
+  --shadow-md: 0 8px 40px rgba(0,0,0,0.42);
   --t:         0.2s ease;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -206,7 +209,7 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
   justify-content: center;
   padding: 40px 2rem;
-  background: var(--white);
+  background: var(--surface-2);
   overflow-x: hidden;
   overflow-y: auto;
   min-height: 0;
@@ -238,9 +241,9 @@ a { text-decoration: none; color: inherit; }
   transition: all var(--t);
 }
 .auth-tab.active {
-  background: white;
-  color: var(--navy);
-  box-shadow: 0 2px 10px rgba(11,30,69,0.1);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
 
 /* ── FORM WRAP ───────────────────────────── */
@@ -288,8 +291,8 @@ a { text-decoration: none; color: inherit; }
 }
 .input-wrap input:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(25,118,210,0.1);
-  background: white;
+  box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+  background: var(--surface-2);
 }
 .input-wrap input::placeholder { color: var(--text-3); }
 .pass-toggle {
@@ -326,12 +329,12 @@ a { text-decoration: none; color: inherit; }
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
+  background: rgba(96,165,250,0.1);
+  border: 1px solid rgba(96,165,250,0.3);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   font-size: 13px;
-  color: #1D4ED8;
+  color: var(--blue);
   line-height: 1.55;
 }
 .notice-box i { flex-shrink: 0; margin-top: 2px; }
@@ -348,14 +351,14 @@ a { text-decoration: none; color: inherit; }
 }
 .form-alert i { flex-shrink: 0; margin-top: 2px; }
 .form-alert.success {
-  background: #ECFDF3;
-  border: 1px solid #A7F3D0;
-  color: #047857;
+  background: rgba(52,211,153,0.12);
+  border: 1px solid rgba(52,211,153,0.3);
+  color: var(--success);
 }
 .form-alert.error {
-  background: #FEF2F2;
-  border: 1px solid #FECACA;
-  color: #B91C1C;
+  background: rgba(248,113,113,0.12);
+  border: 1px solid rgba(248,113,113,0.3);
+  color: var(--danger);
 }
 .reset-overlay {
   display: none;
@@ -373,8 +376,8 @@ a { text-decoration: none; color: inherit; }
   width: min(100%, 440px);
   padding: 28px;
   border-radius: 12px;
-  background: white;
-  box-shadow: 0 20px 50px rgba(11,30,69,0.2);
+  background: var(--surface-2);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
 }
 .reset-close {
   position: absolute;
@@ -388,8 +391,8 @@ a { text-decoration: none; color: inherit; }
 }
 .reset-message { display: none; margin-bottom: 16px; font-size: 13px; line-height: 1.5; }
 .reset-message.show { display: block; }
-.reset-message.error { color: #B91C1C; }
-.reset-message.success { color: #047857; }
+.reset-message.error { color: var(--danger); }
+.reset-message.success { color: var(--success); }
 .reset-resend {
   border: none;
   background: transparent;
@@ -447,7 +450,7 @@ a { text-decoration: none; color: inherit; }
 }
 .modal-overlay.show { display: flex; }
 .modal-box {
-  background: white;
+  background: var(--surface-2);
   border-radius: var(--radius);
   padding: 40px;
   max-width: 400px;
@@ -467,7 +470,7 @@ a { text-decoration: none; color: inherit; }
   font-size: 28px;
   margin: 0 auto 1.5rem;
 }
-.modal-icon.success { background: #DCFCE7; color: var(--success); }
+.modal-icon.success { background: rgba(52,211,153,0.15); color: var(--success); }
 .modal-box h3 {
   font-size: 1.5rem; font-weight: 600;
   margin-bottom: 10px; color: var(--text);

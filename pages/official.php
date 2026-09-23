@@ -494,7 +494,7 @@ if (count($officialNameParts) >= 2) {
             </select>
           </div>
           <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table vulnerability-registry-table">
               <thead><tr><th>Name</th><th>Purok</th><th>Score</th><th>Top Contributing Factors</th></tr></thead>
               <tbody id="vulnerabilityRegistryBody"></tbody>
             </table>
