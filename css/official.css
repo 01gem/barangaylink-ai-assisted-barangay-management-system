@@ -467,6 +467,17 @@ body.sidebar-collapsed .slider-container {
 .triage-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .triage-card [hidden] { display: none !important; }
 .registry-actions { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+.ai-assessment-cell { min-width: 220px; max-width: 360px; }
+.ai-tier { display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ai-tier-critical { background: #FEE2E2; color: #B91C1C; }
+.ai-tier-high { background: #FFEDD5; color: #C2410C; }
+.ai-tier-moderate { background: #FEF9C3; color: #A16207; }
+.ai-tier-low { background: #DCFCE7; color: #15803D; }
+.ai-tier-none { background: var(--surface); color: var(--text-3); font-weight: 600; }
+.ai-reason { margin-top: 5px; color: var(--text-2); font-size: 12.5px; line-height: 1.45; }
+.ai-flags { margin-top: 3px; color: var(--text-3); font-size: 11.5px; }
+.triage-situation { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; resize: vertical; }
+.triage-method-note { margin: 4px 0 2px; color: var(--text-3); font-size: 12.5px; }
 .registry-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; color: var(--text-2); font-size: 13px; font-weight: 600; }
 .registry-pagination .btn-action:disabled { opacity: .45; cursor: not-allowed; }
 .ai-hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; max-width: 1100px; }

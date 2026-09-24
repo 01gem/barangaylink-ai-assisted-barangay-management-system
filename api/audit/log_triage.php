@@ -19,6 +19,13 @@ if (!$puroks) {
 }
 
 $residentCount = max(0, (int)($input['resident_count'] ?? 0));
+$ranking = ($input['mode'] ?? '') === 'ai' ? 'AI (Gemini)' : 'Formula score';
+$situation = mb_substr(trim((string)($input['situation'] ?? '')), 0, 300);
+
+$details = 'Puroks: ' . implode(', ', $puroks) . '; Residents: ' . $residentCount . '; Ranking: ' . $ranking;
+if ($situation !== '') {
+  $details .= '; Situation: ' . $situation;
+}
 
 $db = get_db();
 log_audit(
@@ -28,7 +35,7 @@ log_audit(
   'Generated calamity relief priority list',
   'calamity_triage',
   implode(', ', $puroks),
-  'Puroks: ' . implode(', ', $puroks) . '; Residents: ' . $residentCount
+  $details
 );
 
 json_success(['message' => 'Triage action logged.']);

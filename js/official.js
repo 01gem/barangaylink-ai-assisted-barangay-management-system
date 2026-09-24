@@ -807,10 +807,51 @@ function calculateRegistryFactors(resident) {
   return factors.sort((a, b) => b.points - a.points);
 }
 
+const AI_ASSESS_BATCH_SIZE = 20;
+
+async function runAiAssessment(ids, { context, situation = '', audit = null, onProgress } = {}) {
+  const results = new Map();
+  const assessBatches = async (pending, sendAudit) => {
+    for (let i = 0; i < pending.length; i += AI_ASSESS_BATCH_SIZE) {
+      const data = await fetchJson(`${API_BASE}/ai/assess_residents.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context,
+          situation,
+          resident_ids: pending.slice(i, i + AI_ASSESS_BATCH_SIZE),
+          audit: sendAudit && i === 0 ? audit : null
+        })
+      });
+      (data.assessments || []).forEach(assessment => results.set(Number(assessment.id), assessment));
+      onProgress?.(results.size, ids.length, results);
+    }
+  };
+  await assessBatches(ids, true);
+  const missing = ids.filter(id => !results.has(id));
+  if (missing.length) await assessBatches(missing, false);
+  return results;
+}
+
+function aiTierBadge(assessment) {
+  if (!assessment) return '<span class="ai-tier ai-tier-none">Not assessed</span>';
+  return `<span class="ai-tier ai-tier-${assessment.tier.toLowerCase()}">${escapeHtml(assessment.tier)} · ${Number(assessment.ai_score) || 0}</span>`;
+}
+
+function aiAssessmentCell(assessment) {
+  if (!assessment) return aiTierBadge(null);
+  const flags = (assessment.flags || []).join(', ');
+  return `${aiTierBadge(assessment)}
+    <div class="ai-reason">${escapeHtml(assessment.reason || '')}</div>
+    ${flags ? `<div class="ai-flags">${escapeHtml(flags)}</div>` : ''}`;
+}
+
 const REGISTRY_PAGE_SIZE = 20;
 let REGISTRY_PAGE = 1;
 let REGISTRY_ORDER = new Map();
 let REGISTRY_SORT_BY_SCORE = false;
+let REGISTRY_SORT_BY_AI = false;
+const AI_ASSESSMENTS = new Map();
 
 function registryOrderKey(resident) {
   if (!REGISTRY_ORDER.has(resident.dbId)) REGISTRY_ORDER.set(resident.dbId, Math.random());
@@ -820,6 +861,7 @@ function registryOrderKey(resident) {
 function rerollRegistryOrder() {
   REGISTRY_ORDER = new Map();
   REGISTRY_SORT_BY_SCORE = false;
+  REGISTRY_SORT_BY_AI = false;
   REGISTRY_PAGE = 1;
   renderVulnerabilityRegistry();
 }
@@ -837,9 +879,17 @@ function renderVulnerabilityRegistry() {
 
   const rows = RESIDENTS
     .filter(resident => filter.value === 'all' || resident.purok_zone === filter.value)
-    .sort((a, b) => REGISTRY_SORT_BY_SCORE
-      ? Number(b.eligibility_score) - Number(a.eligibility_score)
-      : registryOrderKey(a) - registryOrderKey(b));
+    .sort((a, b) => {
+      if (REGISTRY_SORT_BY_AI) {
+        const aiA = AI_ASSESSMENTS.get(a.dbId);
+        const aiB = AI_ASSESSMENTS.get(b.dbId);
+        if (aiA && aiB && aiA.ai_score !== aiB.ai_score) return aiB.ai_score - aiA.ai_score;
+        if (!!aiA !== !!aiB) return aiA ? -1 : 1;
+      }
+      return REGISTRY_SORT_BY_SCORE || REGISTRY_SORT_BY_AI
+        ? Number(b.eligibility_score) - Number(a.eligibility_score)
+        : registryOrderKey(a) - registryOrderKey(b);
+    });
   const totalPages = Math.max(1, Math.ceil(rows.length / REGISTRY_PAGE_SIZE));
   REGISTRY_PAGE = Math.min(Math.max(REGISTRY_PAGE, 1), totalPages);
   const pageRows = rows.slice((REGISTRY_PAGE - 1) * REGISTRY_PAGE_SIZE, REGISTRY_PAGE * REGISTRY_PAGE_SIZE);
@@ -856,9 +906,47 @@ function renderVulnerabilityRegistry() {
       <td style="font-weight:600">${escapeHtml(resident.name)}</td>
       <td>${escapeHtml(resident.purok_zone || 'Not provided')}</td>
       <td><span class="vulnerability-score">${Number(resident.eligibility_score) || 0}</span></td>
+      <td class="ai-assessment-cell">${aiAssessmentCell(AI_ASSESSMENTS.get(resident.dbId))}</td>
       <td>${escapeHtml(factors)}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="4" class="registry-empty">No residents match this Purok.</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="registry-empty">No residents match this Purok.</td></tr>';
+}
+
+async function runRegistryAiAssessment(button) {
+  const filter = document.getElementById('vulnerabilityPurokFilter');
+  const purok = filter ? filter.value : 'all';
+  const ids = RESIDENTS
+    .filter(resident => purok === 'all' || resident.purok_zone === purok)
+    .map(resident => resident.dbId);
+  if (!ids.length) {
+    showToastAdmin('Nothing to Assess', 'No residents match this Purok.');
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = `Assessing 0/${ids.length}...`;
+  REGISTRY_SORT_BY_AI = true;
+  REGISTRY_PAGE = 1;
+  try {
+    const results = await runAiAssessment(ids, {
+      context: 'registry',
+      audit: { scope: purok === 'all' ? 'All Puroks' : purok, total: ids.length },
+      onProgress: (done, total, partial) => {
+        partial.forEach((assessment, id) => AI_ASSESSMENTS.set(id, assessment));
+        button.textContent = `Assessing ${done}/${total}...`;
+        renderVulnerabilityRegistry();
+      }
+    });
+    const skipped = ids.length - results.size;
+    showToastAdmin('AI Assessment Complete', `${results.size} residents assessed${skipped ? `; ${skipped} skipped by AI` : ''}.`);
+    await loadAuditLog();
+  } catch (err) {
+    showToastAdmin('AI Assessment Failed', `${err.message} Formula scores are still shown.`);
+  } finally {
+    button.disabled = false;
+    button.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI Assess';
+    renderVulnerabilityRegistry();
+  }
 }
 
 function initVulnerabilityRegistry() {
@@ -883,6 +971,7 @@ function initVulnerabilityRegistry() {
       const previousScores = new Map(RESIDENTS.map(r => [r.dbId, r.eligibility_score]));
       const data = await fetchJson(`${API_BASE}/residents/recalculate_all_scores.php`, { method: 'POST' });
       REGISTRY_SORT_BY_SCORE = true;
+      REGISTRY_SORT_BY_AI = false;
       REGISTRY_PAGE = 1;
       await loadResidents();
       const changed = RESIDENTS.filter(r => previousScores.get(r.dbId) !== r.eligibility_score).length;
@@ -894,6 +983,8 @@ function initVulnerabilityRegistry() {
       button.innerHTML = '<i class="fa-solid fa-rotate"></i> Recalculate All Scores';
     }
   });
+  const aiAssessBtn = document.getElementById('aiAssessBtn');
+  aiAssessBtn?.addEventListener('click', () => runRegistryAiAssessment(aiAssessBtn));
   document.getElementById('registryExportBtn')?.addEventListener('click', exportRegistryCsv);
   renderVulnerabilityRegistry();
 }
@@ -903,18 +994,31 @@ function exportRegistryCsv() {
   const purok = filter ? filter.value : 'all';
   const rows = RESIDENTS
     .filter(resident => purok === 'all' || resident.purok_zone === purok)
-    .sort((a, b) => Number(b.eligibility_score) - Number(a.eligibility_score));
+    .sort((a, b) => {
+      const aiA = AI_ASSESSMENTS.get(a.dbId);
+      const aiB = AI_ASSESSMENTS.get(b.dbId);
+      if (aiA && aiB && aiA.ai_score !== aiB.ai_score) return aiB.ai_score - aiA.ai_score;
+      if (!!aiA !== !!aiB) return aiA ? -1 : 1;
+      return Number(b.eligibility_score) - Number(a.eligibility_score);
+    });
   if (!rows.length) {
     showToastAdmin('Nothing to Export', 'No residents match this Purok.');
     return;
   }
-  const header = ['Name', 'Purok', 'Score', 'Top Contributing Factors'];
-  const lines = [header, ...rows.map(resident => [
-    resident.name,
-    resident.purok_zone || 'Not provided',
-    Number(resident.eligibility_score) || 0,
-    calculateRegistryFactors(resident).slice(0, 3).map(factor => `${factor.label} +${factor.points}`).join('; ') || 'No contributing factors'
-  ])].map(cells => cells.map(csvCell).join(','));
+  const header = ['Name', 'Purok', 'Formula Score', 'AI Tier', 'AI Score', 'AI Reason', 'AI Flags', 'Top Contributing Factors'];
+  const lines = [header, ...rows.map(resident => {
+    const assessment = AI_ASSESSMENTS.get(resident.dbId);
+    return [
+      resident.name,
+      resident.purok_zone || 'Not provided',
+      Number(resident.eligibility_score) || 0,
+      assessment ? assessment.tier : 'Not assessed',
+      assessment ? assessment.ai_score : '',
+      assessment ? assessment.reason : '',
+      assessment ? (assessment.flags || []).join('; ') : '',
+      calculateRegistryFactors(resident).slice(0, 3).map(factor => `${factor.label} +${factor.points}`).join('; ') || 'No contributing factors'
+    ];
+  })].map(cells => cells.map(csvCell).join(','));
   const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const now = new Date();
   const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -941,16 +1045,28 @@ function renderTriagePurokOptions() {
     </label>`).join('') : '<span class="registry-empty">No Puroks recorded in resident profiles.</span>';
 }
 
-function buildTriageRows(puroks) {
+let TRIAGE_METHOD_NOTE = '';
+
+function triageCandidates(puroks) {
   const selected = new Set(puroks);
-  return RESIDENTS
-    .filter(resident => selected.has(resident.purok_zone))
-    .sort((a, b) => Number(b.eligibility_score) - Number(a.eligibility_score))
+  return RESIDENTS.filter(resident => selected.has(resident.purok_zone));
+}
+
+function buildTriageRows(puroks, assessments = null) {
+  return triageCandidates(puroks)
+    .sort((a, b) => {
+      if (assessments) {
+        const diff = assessments.get(b.dbId).ai_score - assessments.get(a.dbId).ai_score;
+        if (diff) return diff;
+      }
+      return Number(b.eligibility_score) - Number(a.eligibility_score);
+    })
     .map((resident, index) => ({
       rank: index + 1,
       name: resident.name,
       purok: resident.purok_zone,
       score: Number(resident.eligibility_score) || 0,
+      ai: assessments ? assessments.get(resident.dbId) : null,
       contact: resident.contact,
       householdSize: resident.household_size
     }));
@@ -960,17 +1076,20 @@ function renderTriageResult() {
   const result = document.getElementById('triageResult');
   const tbody = document.getElementById('triageResultBody');
   const exportBtn = document.getElementById('triageExportBtn');
+  const note = document.getElementById('triageMethodNote');
   if (!result || !tbody || !exportBtn) return;
   result.hidden = false;
   exportBtn.hidden = TRIAGE_ROWS.length === 0;
+  if (note) note.textContent = TRIAGE_METHOD_NOTE;
   tbody.innerHTML = TRIAGE_ROWS.length ? TRIAGE_ROWS.map(row => `<tr class="vulnerability-registry-entry">
       <td style="font-weight:700">${row.rank}</td>
       <td style="font-weight:600">${escapeHtml(row.name)}</td>
       <td>${escapeHtml(row.purok)}</td>
       <td><span class="vulnerability-score">${row.score}</span></td>
+      <td class="ai-assessment-cell">${row.ai ? aiAssessmentCell(row.ai) : '<span class="ai-tier ai-tier-none">Formula only</span>'}</td>
       <td>${escapeHtml(row.contact)}</td>
       <td>${escapeHtml(String(row.householdSize))}</td>
-    </tr>`).join('') : '<tr><td colspan="6" class="registry-empty">No residents found in the selected Puroks.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="7" class="registry-empty">No residents found in the selected Puroks.</td></tr>';
 }
 
 function csvCell(value) {
@@ -982,9 +1101,18 @@ function csvCell(value) {
 
 function exportTriageCsv() {
   if (!TRIAGE_ROWS.length) return;
-  const header = ['Rank', 'Name', 'Purok', 'Score', 'Contact', 'Household Size'];
-  const lines = [header, ...TRIAGE_ROWS.map(row => [row.rank, row.name, row.purok, row.score, row.contact, row.householdSize])]
-    .map(cells => cells.map(csvCell).join(','));
+  const header = ['Rank', 'Name', 'Purok', 'Formula Score', 'AI Tier', 'AI Score', 'AI Reason', 'Contact', 'Household Size'];
+  const lines = [header, ...TRIAGE_ROWS.map(row => [
+    row.rank,
+    row.name,
+    row.purok,
+    row.score,
+    row.ai ? row.ai.tier : 'Formula only',
+    row.ai ? row.ai.ai_score : '',
+    row.ai ? row.ai.reason : '',
+    row.contact,
+    row.householdSize
+  ])].map(cells => cells.map(csvCell).join(','));
   const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const now = new Date();
   const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -1001,18 +1129,73 @@ function initCalamityTriage() {
   const generateBtn = document.getElementById('triageGenerateBtn');
   const exportBtn = document.getElementById('triageExportBtn');
   generateBtn?.addEventListener('click', async () => {
-    const puroks = [...document.querySelectorAll('#triagePurokList input:checked')].map(input => input.value);
+    const situation = (document.getElementById('triageSituation')?.value || '').trim();
+    let puroks = [...document.querySelectorAll('#triagePurokList input:checked')].map(input => input.value);
+    const resetButton = () => {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="fa-solid fa-list-ol"></i> Generate Priority List';
+    };
+    generateBtn.disabled = true;
+
     if (!puroks.length) {
-      showToastAdmin('No Purok Selected', 'Select at least one affected Purok.');
-      return;
+      if (!situation) {
+        showToastAdmin('No Purok Selected', 'Select affected Puroks or describe the situation.');
+        resetButton();
+        return;
+      }
+      generateBtn.textContent = 'Identifying Puroks...';
+      try {
+        const data = await fetchJson(`${API_BASE}/ai/extract_puroks.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ situation })
+        });
+        puroks = data.puroks || [];
+      } catch (err) {
+        showToastAdmin('AI Purok Detection Failed', `${err.message} Select Puroks manually.`);
+        resetButton();
+        return;
+      }
+      if (!puroks.length) {
+        showToastAdmin('No Purok Identified', 'AI could not match the description to a Purok. Select Puroks manually.');
+        resetButton();
+        return;
+      }
+      document.querySelectorAll('#triagePurokList input').forEach(input => {
+        input.checked = puroks.includes(input.value);
+      });
     }
-    TRIAGE_ROWS = buildTriageRows(puroks);
+
+    const ids = triageCandidates(puroks).map(resident => resident.dbId);
+    let mode = 'formula';
+    let assessments = null;
+    if (ids.length) {
+      generateBtn.textContent = `AI ranking 0/${ids.length}...`;
+      try {
+        assessments = await runAiAssessment(ids, {
+          context: 'triage',
+          situation,
+          onProgress: (done, total) => { generateBtn.textContent = `AI ranking ${done}/${total}...`; }
+        });
+        if (assessments.size < ids.length) throw new Error(`AI skipped ${ids.length - assessments.size} residents.`);
+        mode = 'ai';
+      } catch (err) {
+        assessments = null;
+        showToastAdmin('AI Unavailable', `${err.message} Ranked by formula score instead.`);
+      }
+    }
+
+    TRIAGE_METHOD_NOTE = !ids.length ? '' : mode === 'ai'
+      ? `Ranked by Gemini relief priority${situation ? ' for the described situation' : ''}. Ties use formula score.`
+      : 'Ranked by formula score (AI ranking unavailable).';
+    TRIAGE_ROWS = buildTriageRows(puroks, assessments);
     renderTriageResult();
+    resetButton();
     try {
       await fetchJson(`${API_BASE}/audit/log_triage.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ puroks, resident_count: TRIAGE_ROWS.length })
+        body: JSON.stringify({ puroks, resident_count: TRIAGE_ROWS.length, mode, situation })
       });
       await loadAuditLog();
     } catch (err) {

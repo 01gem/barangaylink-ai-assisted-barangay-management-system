@@ -121,7 +121,13 @@ function calculate_eligibility_score(array $resident): int {
   return min(max($score, 0), 100);
 }
 
-function ai_chat(string $userMessage, string $systemPrompt = '', string $model = 'auto'): array {
+function ai_chat(
+  string $userMessage,
+  string $systemPrompt = '',
+  string $model = 'auto',
+  bool $jsonResponse = false,
+  int $timeoutSeconds = 15
+): array {
   $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: ''));
   $modelName = $model !== '' && $model !== 'auto' ? $model : 'gemini-3.5-flash-lite';
 
@@ -140,6 +146,9 @@ function ai_chat(string $userMessage, string $systemPrompt = '', string $model =
   if ($systemPrompt !== '') {
     $payload['systemInstruction'] = ['parts' => [['text' => $systemPrompt]]];
   }
+  if ($jsonResponse) {
+    $payload['generationConfig'] = ['responseMimeType' => 'application/json'];
+  }
 
   $encodedPayload = json_encode($payload);
   if ($encodedPayload === false) {
@@ -150,26 +159,42 @@ function ai_chat(string $userMessage, string $systemPrompt = '', string $model =
     . rawurlencode($modelName)
     . ':generateContent?key='
     . rawurlencode($apiKey);
-  $ch = curl_init($url);
-  curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    CURLOPT_POSTFIELDS => $encodedPayload,
-    CURLOPT_CONNECTTIMEOUT => 5,
-    CURLOPT_TIMEOUT => 15,
-  ]);
 
-  $response = curl_exec($ch);
-  if ($response === false) {
-    $curlError = curl_error($ch);
+  $maxAttempts = 2;
+  $response = false;
+  $httpStatus = 0;
+  for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_POST => true,
+      CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+      CURLOPT_POSTFIELDS => $encodedPayload,
+      CURLOPT_CONNECTTIMEOUT => 5,
+      CURLOPT_TIMEOUT => max(5, $timeoutSeconds),
+    ]);
+
+    $response = curl_exec($ch);
+    if ($response === false) {
+      $curlError = curl_error($ch);
+      curl_close($ch);
+      return ['success' => false, 'error' => 'Gemini request failed: ' . $curlError];
+    }
+
+    $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    return ['success' => false, 'error' => 'Gemini request failed: ' . $curlError];
+
+    if ($httpStatus !== 503) {
+      break;
+    }
+
+    error_log('Gemini HTTP 503 for model ' . $modelName . ' (attempt ' . $attempt . ' of ' . $maxAttempts . ').');
+    if ($attempt < $maxAttempts) {
+      sleep(1);
+    }
   }
 
-  $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
-  $decoded = json_decode($response, true);
+  $decoded = json_decode((string)$response, true);
 
   if ($httpStatus < 200 || $httpStatus >= 300) {
     return ['success' => false, 'error' => 'Gemini returned HTTP ' . $httpStatus . '.'];
@@ -184,5 +209,12 @@ function ai_chat(string $userMessage, string $systemPrompt = '', string $model =
   }
 
   return ['success' => true, 'content' => $content, 'model' => $modelName];
+}
+
+function ai_decode_json(string $content): ?array {
+  $text = trim($content);
+  $text = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $text) ?? $text;
+  $decoded = json_decode($text, true);
+  return is_array($decoded) ? $decoded : null;
 }
 ?>

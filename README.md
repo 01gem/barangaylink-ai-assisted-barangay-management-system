@@ -227,8 +227,17 @@ production hosting. Before deploying anywhere reachable outside your local machi
   (it does by default in this repo) and that no API keys ever end up in git history
 - Keep `GEMINI_API_KEY` server-side. Do not expose it in frontend code, URLs, logs,
   or API responses. Rotate the key immediately if it is accidentally disclosed.
-- Gemini is currently used only by the admin diagnostic endpoint; adding other AI
-  features should route through a server-side PHP endpoint and `ai_chat()`.
+- Gemini is used by the connectivity test (`api/ai/echo_test.php`), the AI
+  Vulnerability Registry assessment and Calamity Triage ranking
+  (`api/ai/assess_residents.php`), and Purok detection for triage
+  (`api/ai/extract_puroks.php`). All calls go through `ai_chat()` on the server.
+- The AI assessment sends full resident profiles (including names, addresses,
+  contacts, and PWD / 4Ps / income data) to Google's Gemini API. Review this under
+  the Data Privacy Act of 2012 before real deployment; free-tier API data may be
+  used by Google to improve its models.
+- The rule-based `eligibility_score` remains the stored baseline. AI assessments are
+  not saved to the database and Calamity Triage falls back to formula ranking when
+  Gemini is unavailable.
 - Review file upload limits/validation in `api/residents/upload_photo.php` and
   `generated_documents/` / `profile_img/` folder permissions for a hardened deployment
 - `document_type` on `document_requests` is free text (no enum/check constraint) —

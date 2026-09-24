@@ -483,11 +483,11 @@ if (count($officialNameParts) >= 2) {
         <div class="ai-hub" id="aiHub">
           <button type="button" class="ai-tool-tile" data-ai-view="registry">
             <span class="ai-tile-ico" style="background:#DBEAFE;color:#1976D2"><i class="fa-solid fa-shield-halved"></i></span>
-            <span class="ai-tile-text"><span class="ai-tile-title">Vulnerability Registry</span><span class="ai-tile-desc">Rank residents by eligibility score</span></span>
+            <span class="ai-tile-text"><span class="ai-tile-title">Vulnerability Registry</span><span class="ai-tile-desc">AI-assessed vulnerability ranking</span></span>
           </button>
           <button type="button" class="ai-tool-tile" data-ai-view="triage">
             <span class="ai-tile-ico" style="background:#FEE2E2;color:#EF4444"><i class="fa-solid fa-triangle-exclamation"></i></span>
-            <span class="ai-tile-text"><span class="ai-tile-title">Calamity Triage</span><span class="ai-tile-desc">Generate relief priority lists by purok</span></span>
+            <span class="ai-tile-text"><span class="ai-tile-title">Calamity Triage</span><span class="ai-tile-desc">AI relief priority lists from a situation report</span></span>
           </button>
           <div class="ai-tool-tile is-disabled" aria-disabled="true">
             <span class="ai-tile-ico"><i class="fa-solid fa-handshake"></i></span>
@@ -510,9 +510,10 @@ if (count($officialNameParts) >= 2) {
           <div class="registry-header">
             <div>
               <h3><i class="fa-solid fa-shield-halved"></i> Vulnerability Registry</h3>
-              <p>Rule-based eligibility scores from resident profiling data. Higher scores indicate greater vulnerability.</p>
+              <p>Formula scores from resident profiling data, with on-demand Gemini assessment of the filtered residents. Higher means more vulnerable.</p>
             </div>
             <div class="registry-actions">
+              <button id="aiAssessBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Assess</button>
               <button id="recalculateScoresBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-rotate"></i> Recalculate All Scores</button>
               <button id="registryExportBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-file-csv"></i> Export as CSV</button>
             </div>
@@ -524,7 +525,7 @@ if (count($officialNameParts) >= 2) {
           </div>
           <div class="table-wrap">
             <table class="data-table vulnerability-registry-table">
-              <thead><tr><th>Name</th><th>Purok</th><th>Score</th><th>Top Contributing Factors</th></tr></thead>
+              <thead><tr><th>Name</th><th>Purok</th><th>Formula Score</th><th>AI Assessment</th><th>Top Contributing Factors</th></tr></thead>
               <tbody id="vulnerabilityRegistryBody"></tbody>
             </table>
           </div>
@@ -541,10 +542,11 @@ if (count($officialNameParts) >= 2) {
           <div class="registry-header">
             <div>
               <h3><i class="fa-solid fa-truck-medical"></i> Calamity Triage</h3>
-              <p>Select affected Puroks to build a relief priority list ranked by eligibility score.</p>
+              <p>Describe the situation and select affected Puroks. Gemini ranks relief priority; if AI is unavailable, the list falls back to formula scores. Leave Puroks unselected to let AI pick them from the description.</p>
             </div>
           </div>
           <div class="triage-controls">
+            <textarea id="triageSituation" class="triage-situation" rows="3" maxlength="1000" placeholder="e.g. Flash flood in Purok 3 and Purok 5. Prioritize elderly, PWD, and families with young children."></textarea>
             <div id="triagePurokList" class="triage-purok-list" role="group" aria-label="Affected Puroks"></div>
             <div class="triage-actions">
               <button id="triageGenerateBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-list-ol"></i> Generate Priority List</button>
@@ -552,8 +554,9 @@ if (count($officialNameParts) >= 2) {
             </div>
           </div>
           <div id="triageResult" class="table-wrap" hidden>
+            <p id="triageMethodNote" class="triage-method-note"></p>
             <table class="data-table vulnerability-registry-table">
-              <thead><tr><th>Rank</th><th>Name</th><th>Purok</th><th>Score</th><th>Contact</th><th>Household Size</th></tr></thead>
+              <thead><tr><th>Rank</th><th>Name</th><th>Purok</th><th>Formula Score</th><th>AI Priority</th><th>Contact</th><th>Household Size</th></tr></thead>
               <tbody id="triageResultBody"></tbody>
             </table>
           </div>
