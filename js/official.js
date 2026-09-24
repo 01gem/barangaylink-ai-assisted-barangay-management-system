@@ -726,6 +726,7 @@ async function loadResidents() {
   RESIDENTS = (data.residents || []).map(mapResidentRow);
   renderResidents(RESIDENTS);
   renderVulnerabilityRegistry();
+  renderTriagePurokOptions();
 }
 
 function calculateRegistryFactors(resident) {
@@ -801,6 +802,101 @@ function initVulnerabilityRegistry() {
     }
   });
   renderVulnerabilityRegistry();
+}
+
+let TRIAGE_ROWS = [];
+
+function renderTriagePurokOptions() {
+  const list = document.getElementById('triagePurokList');
+  if (!list) return;
+  const checked = new Set([...list.querySelectorAll('input:checked')].map(input => input.value));
+  const puroks = [...new Set(RESIDENTS.map(r => r.purok_zone).filter(Boolean))].sort();
+  list.innerHTML = puroks.length ? puroks.map(purok => `<label class="triage-purok-option">
+      <input type="checkbox" value="${escapeAttribute(purok)}"${checked.has(purok) ? ' checked' : ''} />
+      ${escapeHtml(purok)}
+    </label>`).join('') : '<span class="registry-empty">No Puroks recorded in resident profiles.</span>';
+}
+
+function buildTriageRows(puroks) {
+  const selected = new Set(puroks);
+  return RESIDENTS
+    .filter(resident => selected.has(resident.purok_zone))
+    .sort((a, b) => Number(b.eligibility_score) - Number(a.eligibility_score))
+    .map((resident, index) => ({
+      rank: index + 1,
+      name: resident.name,
+      purok: resident.purok_zone,
+      score: Number(resident.eligibility_score) || 0,
+      contact: resident.contact,
+      householdSize: resident.household_size
+    }));
+}
+
+function renderTriageResult() {
+  const result = document.getElementById('triageResult');
+  const tbody = document.getElementById('triageResultBody');
+  const exportBtn = document.getElementById('triageExportBtn');
+  if (!result || !tbody || !exportBtn) return;
+  result.hidden = false;
+  exportBtn.hidden = TRIAGE_ROWS.length === 0;
+  tbody.innerHTML = TRIAGE_ROWS.length ? TRIAGE_ROWS.map(row => `<tr class="vulnerability-registry-entry">
+      <td style="font-weight:700">${row.rank}</td>
+      <td style="font-weight:600">${escapeHtml(row.name)}</td>
+      <td>${escapeHtml(row.purok)}</td>
+      <td><span class="vulnerability-score">${row.score}</span></td>
+      <td>${escapeHtml(row.contact)}</td>
+      <td>${escapeHtml(String(row.householdSize))}</td>
+    </tr>`).join('') : '<tr><td colspan="6" class="registry-empty">No residents found in the selected Puroks.</td></tr>';
+}
+
+function csvCell(value) {
+  let text = String(value ?? '');
+  const isPhoneLike = /^[+\-]?[\d\s()-]+$/.test(text);
+  if (/^[=@\t\r]/.test(text) || (/^[+\-]/.test(text) && !isPhoneLike)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function exportTriageCsv() {
+  if (!TRIAGE_ROWS.length) return;
+  const header = ['Rank', 'Name', 'Purok', 'Score', 'Contact', 'Household Size'];
+  const lines = [header, ...TRIAGE_ROWS.map(row => [row.rank, row.name, row.purok, row.score, row.contact, row.householdSize])]
+    .map(cells => cells.map(csvCell).join(','));
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `relief-priority-${date}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 0);
+}
+
+function initCalamityTriage() {
+  const generateBtn = document.getElementById('triageGenerateBtn');
+  const exportBtn = document.getElementById('triageExportBtn');
+  generateBtn?.addEventListener('click', async () => {
+    const puroks = [...document.querySelectorAll('#triagePurokList input:checked')].map(input => input.value);
+    if (!puroks.length) {
+      showToastAdmin('No Purok Selected', 'Select at least one affected Purok.');
+      return;
+    }
+    TRIAGE_ROWS = buildTriageRows(puroks);
+    renderTriageResult();
+    try {
+      await fetchJson(`${API_BASE}/audit/log_triage.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puroks, resident_count: TRIAGE_ROWS.length })
+      });
+      await loadAuditLog();
+    } catch (err) {
+      showToastAdmin('Audit Log Failed', err.message);
+    }
+  });
+  exportBtn?.addEventListener('click', exportTriageCsv);
+  renderTriagePurokOptions();
 }
 
 async function loadRequests() {
@@ -1562,6 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initServiceForm();
   initDocumentGenerationModal();
   initVulnerabilityRegistry();
+  initCalamityTriage();
   renderAuditLog();
   (async () => {
     try {

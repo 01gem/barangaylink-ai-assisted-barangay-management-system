@@ -460,9 +460,16 @@ body.sidebar-collapsed .slider-container {
   background: var(--blue-lt);
   border-color: #93C5FD;
 }
+.triage-controls { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+.triage-purok-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.triage-purok-option { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+.triage-purok-option:has(input:checked) { background: var(--blue-lt); border-color: #93C5FD; color: var(--blue); font-weight: 600; }
+.triage-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.triage-card [hidden] { display: none !important; }
 @media (max-width: 640px) {
   .registry-header { flex-direction: column; }
   .registry-header .btn-primary-action { width: 100%; justify-content: center; }
+  .triage-actions .btn-primary-action { width: 100%; justify-content: center; }
 }
 
 /* ── LOCAL SERVICES ADMIN ────────────────── */

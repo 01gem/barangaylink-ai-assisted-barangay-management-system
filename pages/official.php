@@ -500,6 +500,27 @@ if (count($officialNameParts) >= 2) {
             </table>
           </div>
         </div>
+        <div class="card vulnerability-registry-card triage-card">
+          <div class="registry-header">
+            <div>
+              <h3><i class="fa-solid fa-truck-medical"></i> Calamity Triage</h3>
+              <p>Select affected Puroks to build a relief priority list ranked by eligibility score.</p>
+            </div>
+          </div>
+          <div class="triage-controls">
+            <div id="triagePurokList" class="triage-purok-list" role="group" aria-label="Affected Puroks"></div>
+            <div class="triage-actions">
+              <button id="triageGenerateBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-list-ol"></i> Generate Priority List</button>
+              <button id="triageExportBtn" type="button" class="btn-primary-action" hidden><i class="fa-solid fa-file-csv"></i> Export as CSV</button>
+            </div>
+          </div>
+          <div id="triageResult" class="table-wrap" hidden>
+            <table class="data-table vulnerability-registry-table">
+              <thead><tr><th>Rank</th><th>Name</th><th>Purok</th><th>Score</th><th>Contact</th><th>Household Size</th></tr></thead>
+              <tbody id="triageResultBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- ─── MY PROFILE ─── -->
