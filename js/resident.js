@@ -636,7 +636,7 @@ function showToast(title, body) {
     toast.style.cssText = `
       position:fixed; bottom:24px; right:24px; background:white;
       border-radius:12px; padding:16px 20px; box-shadow:0 8px 32px rgba(11,30,69,0.18);
-      border-left:4px solid #059669; display:flex; align-items:flex-start; gap:12px;
+      border:1px solid #C5CBD6; border-left:4px solid #059669; display:flex; align-items:flex-start; gap:12px;
       max-width:380px; z-index:9999; transform:translateY(120px); opacity:0;
       transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
     `;
