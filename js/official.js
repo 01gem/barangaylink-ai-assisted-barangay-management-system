@@ -548,6 +548,52 @@ function initAiEchoTest() {
   });
 }
 
+function initLaborMatcher() {
+  const queryInput = document.getElementById('laborQuery');
+  const matchBtn = document.getElementById('laborMatchBtn');
+  const status = document.getElementById('laborStatus');
+  const result = document.getElementById('laborResult');
+  const note = document.getElementById('laborResultNote');
+  const tbody = document.getElementById('laborResultBody');
+  if (!queryInput || !matchBtn || !status || !result || !tbody) return;
+
+  matchBtn.addEventListener('click', async () => {
+    const query = queryInput.value.trim();
+    if (!query) {
+      showToastAdmin('No Request Entered', 'Describe the labor need first.');
+      return;
+    }
+    matchBtn.disabled = true;
+    result.hidden = true;
+    status.hidden = false;
+    status.className = 'ai-echo-response is-loading';
+    status.textContent = 'Finding matching residents...';
+
+    try {
+      const data = await fetchJson(`${API_BASE}/ai/match_labor.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+      const matches = data.matches || [];
+      status.hidden = true;
+      result.hidden = false;
+      if (note) note.textContent = `${matches.length} match${matches.length === 1 ? '' : 'es'} from ${data.candidate_count || 0} available residents.`;
+      tbody.innerHTML = matches.length ? matches.map(match => `<tr class="vulnerability-registry-entry">
+          <td style="font-weight:600">${escapeHtml(match.name)}</td>
+          <td>${escapeHtml(match.purok_zone || '-')}</td>
+          <td>${escapeHtml(match.contact || '-')}</td>
+          <td>${escapeHtml(match.match_reason)}</td>
+        </tr>`).join('') : '<tr><td colspan="4" class="registry-empty">No matching residents found for this request</td></tr>';
+    } catch (err) {
+      status.className = 'ai-echo-response is-error';
+      status.textContent = `Labor matching failed: ${err.message}`;
+    } finally {
+      matchBtn.disabled = false;
+    }
+  });
+}
+
 function findResidentContactForRequest(req) {
   if (!req) return '';
   if (req.residentId) {
@@ -1966,6 +2012,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDocumentGenerationModal();
   initAiHub();
   initAiEchoTest();
+  initLaborMatcher();
   initVulnerabilityRegistry();
   initCalamityTriage();
   renderAuditLog();

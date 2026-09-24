@@ -465,7 +465,8 @@ body.sidebar-collapsed .slider-container {
 .triage-purok-option { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
 .triage-purok-option:has(input:checked) { background: var(--blue-lt); border-color: #93C5FD; color: var(--blue); font-weight: 600; }
 .triage-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.triage-card [hidden] { display: none !important; }
+.triage-card [hidden], .labor-card [hidden] { display: none !important; }
+.labor-card .ai-echo-response { min-height: 0; margin: 0 0 12px; }
 .registry-actions { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
 .ai-assessment-cell { min-width: 220px; max-width: 360px; }
 .ai-tier { display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }

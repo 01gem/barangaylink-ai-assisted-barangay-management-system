@@ -489,11 +489,10 @@ if (count($officialNameParts) >= 2) {
             <span class="ai-tile-ico" style="background:#FEE2E2;color:#EF4444"><i class="fa-solid fa-triangle-exclamation"></i></span>
             <span class="ai-tile-text"><span class="ai-tile-title">Calamity Triage</span><span class="ai-tile-desc">AI relief priority lists from a situation report</span></span>
           </button>
-          <div class="ai-tool-tile is-disabled" aria-disabled="true">
-            <span class="ai-tile-ico"><i class="fa-solid fa-handshake"></i></span>
+          <button type="button" class="ai-tool-tile" data-ai-view="labor">
+            <span class="ai-tile-ico" style="background:#DCFCE7;color:#16A34A"><i class="fa-solid fa-handshake"></i></span>
             <span class="ai-tile-text"><span class="ai-tile-title">Labor Matcher</span><span class="ai-tile-desc">Match residents to job requests</span></span>
-            <span class="ai-tile-badge">Coming soon</span>
-          </div>
+          </button>
           <div class="ai-tool-tile is-disabled" aria-disabled="true">
             <span class="ai-tile-ico"><i class="fa-solid fa-chart-column"></i></span>
             <span class="ai-tile-text"><span class="ai-tile-title">Workforce Insights</span><span class="ai-tile-desc">Employment and skill breakdowns</span></span>
@@ -558,6 +557,31 @@ if (count($officialNameParts) >= 2) {
             <table class="data-table vulnerability-registry-table">
               <thead><tr><th>Rank</th><th>Name</th><th>Purok</th><th>Formula Score</th><th>AI Priority</th><th>Contact</th><th>Household Size</th></tr></thead>
               <tbody id="triageResultBody"></tbody>
+            </table>
+          </div>
+        </div>
+        </div>
+        <div class="ai-subview" data-ai-subview="labor" hidden>
+        <button type="button" class="ai-back-btn"><i class="fa-solid fa-arrow-left"></i> Back to AI Tools</button>
+        <div class="card vulnerability-registry-card labor-card">
+          <div class="registry-header">
+            <div>
+              <h3><i class="fa-solid fa-handshake"></i> Labor Request Matcher</h3>
+              <p>Describe the labor need in plain language. Gemini matches it against residents who are unemployed, self-employed, or open to work.</p>
+            </div>
+          </div>
+          <div class="triage-controls">
+            <textarea id="laborQuery" class="triage-situation" rows="3" maxlength="1000" placeholder="e.g. Need 5 people for a 2-week electrical wiring job in Purok 2."></textarea>
+            <div class="triage-actions">
+              <button id="laborMatchBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-magnifying-glass"></i> Find Matches</button>
+            </div>
+          </div>
+          <div id="laborStatus" class="ai-echo-response" role="status" aria-live="polite" hidden></div>
+          <div id="laborResult" class="table-wrap" hidden>
+            <p id="laborResultNote" class="triage-method-note"></p>
+            <table class="data-table vulnerability-registry-table">
+              <thead><tr><th>Name</th><th>Purok</th><th>Contact</th><th>Match Reason</th></tr></thead>
+              <tbody id="laborResultBody"></tbody>
             </table>
           </div>
         </div>
