@@ -54,6 +54,9 @@ function switchTab(name) {
   } catch (err) {
     /* ignore storage failures */
   }
+  if (name === 'aianalyst') {
+    showAiView(null);
+  }
   if (name === 'auditlog') {
     loadAuditLog().catch(err => showToastAdmin('Audit Log Load Failed', err.message));
   }
@@ -498,6 +501,53 @@ function initDocumentGenerationModal() {
   document.getElementById('generateDocBtn')?.addEventListener('click', generateAndPreviewDocument);
 }
 
+function showAiView(view) {
+  const hub = document.getElementById('aiHub');
+  if (!hub) return;
+  hub.hidden = !!view;
+  document.querySelectorAll('[data-ai-subview]').forEach(panel => {
+    panel.hidden = panel.dataset.aiSubview !== view;
+  });
+  if (view === 'registry') rerollRegistryOrder();
+}
+
+function initAiHub() {
+  document.querySelectorAll('button[data-ai-view]').forEach(tile => {
+    tile.addEventListener('click', () => showAiView(tile.dataset.aiView));
+  });
+  document.querySelectorAll('.ai-back-btn').forEach(btn => {
+    btn.addEventListener('click', () => showAiView(null));
+  });
+}
+
+function initAiEchoTest() {
+  const promptInput = document.getElementById('aiEchoPrompt');
+  const sendButton = document.getElementById('aiEchoSendBtn');
+  const responseArea = document.getElementById('aiEchoResponse');
+  if (!promptInput || !sendButton || !responseArea) return;
+
+  sendButton.addEventListener('click', async () => {
+    sendButton.disabled = true;
+    responseArea.className = 'ai-echo-response is-loading';
+    responseArea.textContent = 'Waiting for AI response...';
+
+    try {
+      const data = await fetchJson(`${API_BASE}/ai/echo_test.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptInput.value.trim() })
+      });
+      responseArea.className = 'ai-echo-response is-success';
+      responseArea.textContent = data.reply || 'AI returned an empty reply.';
+    } catch (err) {
+      responseArea.className = 'ai-echo-response is-error';
+      responseArea.textContent = `Connectivity test failed: ${err.message}`;
+    } finally {
+      sendButton.disabled = false;
+    }
+  });
+}
+
 function findResidentContactForRequest(req) {
   if (!req) return '';
   if (req.residentId) {
@@ -757,6 +807,23 @@ function calculateRegistryFactors(resident) {
   return factors.sort((a, b) => b.points - a.points);
 }
 
+const REGISTRY_PAGE_SIZE = 20;
+let REGISTRY_PAGE = 1;
+let REGISTRY_ORDER = new Map();
+let REGISTRY_SORT_BY_SCORE = false;
+
+function registryOrderKey(resident) {
+  if (!REGISTRY_ORDER.has(resident.dbId)) REGISTRY_ORDER.set(resident.dbId, Math.random());
+  return REGISTRY_ORDER.get(resident.dbId);
+}
+
+function rerollRegistryOrder() {
+  REGISTRY_ORDER = new Map();
+  REGISTRY_SORT_BY_SCORE = false;
+  REGISTRY_PAGE = 1;
+  renderVulnerabilityRegistry();
+}
+
 function renderVulnerabilityRegistry() {
   const tbody = document.getElementById('vulnerabilityRegistryBody');
   const filter = document.getElementById('vulnerabilityPurokFilter');
@@ -770,8 +837,19 @@ function renderVulnerabilityRegistry() {
 
   const rows = RESIDENTS
     .filter(resident => filter.value === 'all' || resident.purok_zone === filter.value)
-    .sort((a, b) => Number(b.eligibility_score) - Number(a.eligibility_score));
-  tbody.innerHTML = rows.length ? rows.map(resident => {
+    .sort((a, b) => REGISTRY_SORT_BY_SCORE
+      ? Number(b.eligibility_score) - Number(a.eligibility_score)
+      : registryOrderKey(a) - registryOrderKey(b));
+  const totalPages = Math.max(1, Math.ceil(rows.length / REGISTRY_PAGE_SIZE));
+  REGISTRY_PAGE = Math.min(Math.max(REGISTRY_PAGE, 1), totalPages);
+  const pageRows = rows.slice((REGISTRY_PAGE - 1) * REGISTRY_PAGE_SIZE, REGISTRY_PAGE * REGISTRY_PAGE_SIZE);
+  const pageLabel = document.getElementById('vulnerabilityPageLabel');
+  const prevBtn = document.getElementById('vulnerabilityPrevBtn');
+  const nextBtn = document.getElementById('vulnerabilityNextBtn');
+  if (pageLabel) pageLabel.textContent = `Page ${REGISTRY_PAGE} of ${totalPages}`;
+  if (prevBtn) prevBtn.disabled = REGISTRY_PAGE <= 1;
+  if (nextBtn) nextBtn.disabled = REGISTRY_PAGE >= totalPages;
+  tbody.innerHTML = pageRows.length ? pageRows.map(resident => {
     const factors = calculateRegistryFactors(resident).slice(0, 3)
       .map(factor => `${factor.label} +${factor.points}`).join(', ') || 'No contributing factors';
     return `<tr class="vulnerability-registry-entry">
@@ -786,14 +864,29 @@ function renderVulnerabilityRegistry() {
 function initVulnerabilityRegistry() {
   const filter = document.getElementById('vulnerabilityPurokFilter');
   const button = document.getElementById('recalculateScoresBtn');
-  filter?.addEventListener('change', renderVulnerabilityRegistry);
+  filter?.addEventListener('change', () => {
+    REGISTRY_PAGE = 1;
+    renderVulnerabilityRegistry();
+  });
+  document.getElementById('vulnerabilityPrevBtn')?.addEventListener('click', () => {
+    REGISTRY_PAGE--;
+    renderVulnerabilityRegistry();
+  });
+  document.getElementById('vulnerabilityNextBtn')?.addEventListener('click', () => {
+    REGISTRY_PAGE++;
+    renderVulnerabilityRegistry();
+  });
   button?.addEventListener('click', async () => {
     button.disabled = true;
     button.textContent = 'Recalculating...';
     try {
+      const previousScores = new Map(RESIDENTS.map(r => [r.dbId, r.eligibility_score]));
       const data = await fetchJson(`${API_BASE}/residents/recalculate_all_scores.php`, { method: 'POST' });
+      REGISTRY_SORT_BY_SCORE = true;
+      REGISTRY_PAGE = 1;
       await loadResidents();
-      showToastAdmin('Scores Recalculated', `${data.updated || 0} resident scores updated.`);
+      const changed = RESIDENTS.filter(r => previousScores.get(r.dbId) !== r.eligibility_score).length;
+      showToastAdmin('Scores Recalculated', `${data.updated || 0} residents recalculated; ${changed} score${changed === 1 ? '' : 's'} changed.`);
     } catch (err) {
       showToastAdmin('Recalculation Failed', err.message);
     } finally {
@@ -801,7 +894,38 @@ function initVulnerabilityRegistry() {
       button.innerHTML = '<i class="fa-solid fa-rotate"></i> Recalculate All Scores';
     }
   });
+  document.getElementById('registryExportBtn')?.addEventListener('click', exportRegistryCsv);
   renderVulnerabilityRegistry();
+}
+
+function exportRegistryCsv() {
+  const filter = document.getElementById('vulnerabilityPurokFilter');
+  const purok = filter ? filter.value : 'all';
+  const rows = RESIDENTS
+    .filter(resident => purok === 'all' || resident.purok_zone === purok)
+    .sort((a, b) => Number(b.eligibility_score) - Number(a.eligibility_score));
+  if (!rows.length) {
+    showToastAdmin('Nothing to Export', 'No residents match this Purok.');
+    return;
+  }
+  const header = ['Name', 'Purok', 'Score', 'Top Contributing Factors'];
+  const lines = [header, ...rows.map(resident => [
+    resident.name,
+    resident.purok_zone || 'Not provided',
+    Number(resident.eligibility_score) || 0,
+    calculateRegistryFactors(resident).slice(0, 3).map(factor => `${factor.label} +${factor.points}`).join('; ') || 'No contributing factors'
+  ])].map(cells => cells.map(csvCell).join(','));
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const suffix = purok === 'all' ? '' : `-${purok.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `vulnerability-registry${suffix}-${date}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 0);
 }
 
 let TRIAGE_ROWS = [];
@@ -1657,6 +1781,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initAnnouncementForm();
   initServiceForm();
   initDocumentGenerationModal();
+  initAiHub();
+  initAiEchoTest();
   initVulnerabilityRegistry();
   initCalamityTriage();
   renderAuditLog();

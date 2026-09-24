@@ -480,13 +480,42 @@ if (count($officialNameParts) >= 2) {
       <!-- ─── AI ANALYST ─── -->
       <div class="tab-panel" id="tab-aianalyst">
         <div class="tab-header"><h2><i class="fa-solid fa-brain"></i> AI Analyst</h2></div>
+        <div class="ai-hub" id="aiHub">
+          <button type="button" class="ai-tool-tile" data-ai-view="registry">
+            <span class="ai-tile-ico" style="background:#DBEAFE;color:#1976D2"><i class="fa-solid fa-shield-halved"></i></span>
+            <span class="ai-tile-text"><span class="ai-tile-title">Vulnerability Registry</span><span class="ai-tile-desc">Rank residents by eligibility score</span></span>
+          </button>
+          <button type="button" class="ai-tool-tile" data-ai-view="triage">
+            <span class="ai-tile-ico" style="background:#FEE2E2;color:#EF4444"><i class="fa-solid fa-triangle-exclamation"></i></span>
+            <span class="ai-tile-text"><span class="ai-tile-title">Calamity Triage</span><span class="ai-tile-desc">Generate relief priority lists by purok</span></span>
+          </button>
+          <div class="ai-tool-tile is-disabled" aria-disabled="true">
+            <span class="ai-tile-ico"><i class="fa-solid fa-handshake"></i></span>
+            <span class="ai-tile-text"><span class="ai-tile-title">Labor Matcher</span><span class="ai-tile-desc">Match residents to job requests</span></span>
+            <span class="ai-tile-badge">Coming soon</span>
+          </div>
+          <div class="ai-tool-tile is-disabled" aria-disabled="true">
+            <span class="ai-tile-ico"><i class="fa-solid fa-chart-column"></i></span>
+            <span class="ai-tile-text"><span class="ai-tile-title">Workforce Insights</span><span class="ai-tile-desc">Employment and skill breakdowns</span></span>
+            <span class="ai-tile-badge">Coming soon</span>
+          </div>
+          <button type="button" class="ai-tool-tile is-secondary" data-ai-view="echo">
+            <span class="ai-tile-ico"><i class="fa-solid fa-plug"></i></span>
+            <span class="ai-tile-text"><span class="ai-tile-title">Connectivity Test</span><span class="ai-tile-desc">Verify AI service is responding</span></span>
+          </button>
+        </div>
+        <div class="ai-subview" data-ai-subview="registry" hidden>
+        <button type="button" class="ai-back-btn"><i class="fa-solid fa-arrow-left"></i> Back to AI Tools</button>
         <div class="card vulnerability-registry-card">
           <div class="registry-header">
             <div>
               <h3><i class="fa-solid fa-shield-halved"></i> Vulnerability Registry</h3>
               <p>Rule-based eligibility scores from resident profiling data. Higher scores indicate greater vulnerability.</p>
             </div>
-            <button id="recalculateScoresBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-rotate"></i> Recalculate All Scores</button>
+            <div class="registry-actions">
+              <button id="recalculateScoresBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-rotate"></i> Recalculate All Scores</button>
+              <button id="registryExportBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-file-csv"></i> Export as CSV</button>
+            </div>
           </div>
           <div class="table-toolbar">
             <select id="vulnerabilityPurokFilter" class="table-filter" aria-label="Filter vulnerability registry by Purok">
@@ -499,7 +528,15 @@ if (count($officialNameParts) >= 2) {
               <tbody id="vulnerabilityRegistryBody"></tbody>
             </table>
           </div>
+          <div class="registry-pagination" id="vulnerabilityRegistryPager">
+            <button type="button" class="btn-action view" id="vulnerabilityPrevBtn"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+            <span id="vulnerabilityPageLabel">Page 1 of 1</span>
+            <button type="button" class="btn-action view" id="vulnerabilityNextBtn">Next <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
         </div>
+        </div>
+        <div class="ai-subview" data-ai-subview="triage" hidden>
+        <button type="button" class="ai-back-btn"><i class="fa-solid fa-arrow-left"></i> Back to AI Tools</button>
         <div class="card vulnerability-registry-card triage-card">
           <div class="registry-header">
             <div>
@@ -520,6 +557,19 @@ if (count($officialNameParts) >= 2) {
               <tbody id="triageResultBody"></tbody>
             </table>
           </div>
+        </div>
+        </div>
+        <div class="ai-subview" data-ai-subview="echo" hidden>
+        <button type="button" class="ai-back-btn"><i class="fa-solid fa-arrow-left"></i> Back to AI Tools</button>
+        <div class="card ai-echo-test-card">
+          <p class="ai-echo-test-note">Temporary connectivity test. Full AI features are still in development.</p>
+          <label for="aiEchoPrompt">Test prompt</label>
+          <div class="ai-echo-test-controls">
+            <input id="aiEchoPrompt" type="text" value="Say hello and confirm you are working correctly." maxlength="2000">
+            <button id="aiEchoSendBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-paper-plane"></i> Send Test Prompt</button>
+          </div>
+          <div id="aiEchoResponse" class="ai-echo-response" role="status" aria-live="polite">No response yet.</div>
+        </div>
         </div>
       </div>
 
