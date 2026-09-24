@@ -246,6 +246,24 @@ production hosting. Before deploying anywhere reachable outside your local machi
 
 ---
 
+## License
+
+BarangayLink — Web-based barangay management system for Brgy. Sampaguita.
+Copyright (C) 2026 Jun Gem Riege M. Dulduco
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for the full text.
+
+Contact: gemdulduco13@gmail.com
+
+---
+
 ## Acknowledgments
 
 Built as a capstone project. Document generation, SMS integration, and role-based
