@@ -258,6 +258,6 @@ commit history for the progression from initial prototype to current state.
 
 ### 🌱 Built for better barangay services
 
-`BarangayLink` • Brgy. Sampaguita • Tagana-an, SDN
+`BarangayLink`
 
 </div>
