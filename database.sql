@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS `residents` (
   -- System-computed profiling fields
   `skill_category` VARCHAR(50) NULL,
   `eligibility_score` INT DEFAULT 0,
+  -- Login lockout
+  `failed_logins` INT NOT NULL DEFAULT 0,
+  `locked_until` DATETIME NULL DEFAULT NULL,
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
@@ -53,6 +56,9 @@ CREATE TABLE IF NOT EXISTS `barangay_officials` (
   `position` varchar(100) NOT NULL DEFAULT '',
   `profile_photo` varchar(255) DEFAULT NULL,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  -- Login lockout
+  `failed_logins` INT NOT NULL DEFAULT 0,
+  `locked_until` DATETIME NULL DEFAULT NULL,
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
@@ -66,6 +72,7 @@ CREATE TABLE IF NOT EXISTS `otp_codes` (
   `expires_at` datetime NOT NULL,
   `used` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `attempts` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_otp_account` (`account_type`,`account_id`,`used`,`expires_at`),
   KEY `idx_otp_created` (`created_at`)

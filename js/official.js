@@ -919,18 +919,24 @@ function rerollRegistryOrder() {
   renderVulnerabilityRegistry();
 }
 
+// Registry, AI assessment and triage only consider active residents; the Residents table still shows everyone.
+function activeResidents() {
+  return RESIDENTS.filter(resident => resident.status === 'active');
+}
+
 function renderVulnerabilityRegistry() {
   const tbody = document.getElementById('vulnerabilityRegistryBody');
   const filter = document.getElementById('vulnerabilityPurokFilter');
   if (!tbody || !filter) return;
 
-  const puroks = [...new Set(RESIDENTS.map(r => r.purok_zone).filter(Boolean))].sort();
+  const residents = activeResidents();
+  const puroks = [...new Set(residents.map(r => r.purok_zone).filter(Boolean))].sort();
   const selected = filter.value;
   filter.innerHTML = '<option value="all">All Puroks</option>'
     + puroks.map(purok => `<option value="${escapeAttribute(purok)}">${escapeHtml(purok)}</option>`).join('');
   filter.value = puroks.includes(selected) ? selected : 'all';
 
-  const rows = RESIDENTS
+  const rows = residents
     .filter(resident => filter.value === 'all' || resident.purok_zone === filter.value)
     .sort((a, b) => {
       if (REGISTRY_SORT_BY_AI) {
@@ -968,7 +974,7 @@ function renderVulnerabilityRegistry() {
 async function runRegistryAiAssessment(button) {
   const filter = document.getElementById('vulnerabilityPurokFilter');
   const purok = filter ? filter.value : 'all';
-  const ids = RESIDENTS
+  const ids = activeResidents()
     .filter(resident => purok === 'all' || resident.purok_zone === purok)
     .map(resident => resident.dbId);
   if (!ids.length) {
@@ -1102,7 +1108,7 @@ let TRIAGE_METHOD_NOTE = '';
 
 function triageCandidates(puroks) {
   const selected = new Set(puroks);
-  return RESIDENTS.filter(resident => selected.has(resident.purok_zone));
+  return activeResidents().filter(resident => selected.has(resident.purok_zone));
 }
 
 function buildTriageRows(puroks, assessments = null) {

@@ -136,7 +136,11 @@ function ai_chat(
   int $timeoutSeconds = 15
 ): array {
   $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: ''));
-  $modelName = $model !== '' && $model !== 'auto' ? $model : 'gemini-3.5-flash-lite';
+  $defaultModel = trim((string)(getenv('GEMINI_MODEL') ?: ''));
+  if ($defaultModel === '') {
+    $defaultModel = 'gemini-3.5-flash-lite';
+  }
+  $modelName = $model !== '' && $model !== 'auto' ? $model : $defaultModel;
 
   if ($apiKey === '') {
     return ['success' => false, 'error' => 'Gemini is not configured (missing GEMINI_API_KEY).'];
@@ -164,40 +168,56 @@ function ai_chat(
 
   $url = 'https://generativelanguage.googleapis.com/v1beta/models/'
     . rawurlencode($modelName)
-    . ':generateContent?key='
-    . rawurlencode($apiKey);
+    . ':generateContent';
 
   $maxAttempts = 2;
   $response = false;
   $httpStatus = 0;
   for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+    $retryAfterHeader = null;
     $ch = curl_init($url);
     curl_setopt_array($ch, [
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_POST => true,
-      CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+      CURLOPT_HTTPHEADER => [
+        'Content-Type: application/json',
+        'x-goog-api-key: ' . $apiKey,
+      ],
       CURLOPT_POSTFIELDS => $encodedPayload,
       CURLOPT_CONNECTTIMEOUT => 5,
       CURLOPT_TIMEOUT => max(5, $timeoutSeconds),
+      CURLOPT_HEADERFUNCTION => function ($ch, string $header) use (&$retryAfterHeader): int {
+        if (stripos($header, 'Retry-After:') === 0) {
+          $retryAfterHeader = trim(substr($header, strlen('Retry-After:')));
+        }
+        return strlen($header);
+      },
     ]);
 
     $response = curl_exec($ch);
     if ($response === false) {
-      $curlError = curl_error($ch);
+      error_log('Gemini cURL error for model ' . $modelName . ': ' . curl_error($ch));
       curl_close($ch);
-      return ['success' => false, 'error' => 'Gemini request failed: ' . $curlError];
+      return ['success' => false, 'error' => 'Gemini request failed.'];
     }
 
     $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($httpStatus !== 503) {
+    if ($httpStatus !== 503 && $httpStatus !== 429) {
       break;
     }
 
-    error_log('Gemini HTTP 503 for model ' . $modelName . ' (attempt ' . $attempt . ' of ' . $maxAttempts . ').');
+    error_log('Gemini HTTP ' . $httpStatus . ' for model ' . $modelName . ' (attempt ' . $attempt . ' of ' . $maxAttempts . ').');
     if ($attempt < $maxAttempts) {
-      sleep(1);
+      $wait = 1;
+      if ($httpStatus === 429) {
+        $wait = 2;
+        if ($retryAfterHeader !== null && is_numeric($retryAfterHeader)) {
+          $wait = min(5, max(1, (int)ceil((float)$retryAfterHeader)));
+        }
+      }
+      sleep($wait);
     }
   }
 

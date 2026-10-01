@@ -29,8 +29,9 @@ $db = get_db();
 $stmt = $db->prepare("SELECT id, fname, lname, contact, purok_zone, occupation, skills, employment_status,
   work_availability, work_experience_years
   FROM residents
-  WHERE employment_status IN ('Unemployed','Self-Employed')
-    OR (work_availability IS NOT NULL AND work_availability != 'Not looking')
+  WHERE status = 'active'
+    AND (employment_status IN ('Unemployed','Self-Employed')
+      OR (work_availability IS NOT NULL AND work_availability != 'Not looking'))
   ORDER BY id");
 if (!$stmt) {
   json_error('Failed to prepare residents query.', 500);
@@ -48,7 +49,6 @@ foreach ($rows as $row) {
   $rowsById[$id] = $row;
   $candidates[] = [
     'id' => $id,
-    'name' => trim(($row['fname'] ?? '') . ' ' . ($row['lname'] ?? '')),
     'occupation' => (string)($row['occupation'] ?? ''),
     'skills' => (string)($row['skills'] ?? ''),
     'employment_status' => (string)($row['employment_status'] ?? ''),
@@ -77,12 +77,7 @@ if (!$result['success']) {
   json_error($result['error'] ?? 'AI request failed.', 502);
 }
 
-$content = trim((string)$result['content']);
-$items = json_decode($content, true);
-if (!is_array($items)) {
-  $stripped = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $content) ?? $content;
-  $items = json_decode(trim($stripped), true);
-}
+$items = ai_decode_json((string)$result['content']);
 if (!is_array($items)) {
   json_error('AI returned an unreadable match list.', 502);
 }

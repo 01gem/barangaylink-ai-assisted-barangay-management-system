@@ -53,12 +53,12 @@ if (count($ids) > AI_ASSESS_MAX_BATCH) {
 
 $db = get_db();
 $placeholders = implode(',', array_fill(0, count($ids), '?'));
-$stmt = $db->prepare("SELECT id, fname, lname, address, contact, birthdate, civil_status, purok_zone,
+$stmt = $db->prepare("SELECT id, birthdate, civil_status, purok_zone,
   household_size, number_of_dependents, is_household_head, is_solo_parent, is_pwd, is_4ps_member,
   years_of_residency, educational_attainment, employment_status, occupation, monthly_income_bracket,
   skills, work_experience_years, training_certifications, work_availability, has_drivers_license,
   eligibility_score
-  FROM residents WHERE id IN ($placeholders)");
+  FROM residents WHERE id IN ($placeholders) AND status = 'active'");
 if (!$stmt) {
   json_error('Failed to prepare residents query.', 500);
 }
@@ -71,9 +71,6 @@ if (!$rows) {
 
 $residents = array_map(fn(array $row) => [
   'id' => (int)$row['id'],
-  'name' => trim(($row['fname'] ?? '') . ' ' . ($row['lname'] ?? '')),
-  'address' => (string)($row['address'] ?? ''),
-  'contact' => (string)($row['contact'] ?? ''),
   'age' => resident_age((string)($row['birthdate'] ?? '')),
   'civil_status' => (string)($row['civil_status'] ?? ''),
   'purok' => (string)($row['purok_zone'] ?? ''),

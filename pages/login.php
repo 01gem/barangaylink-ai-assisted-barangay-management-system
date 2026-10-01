@@ -18,52 +18,57 @@ function clean_input($value) {
 }
 
 function verify_user_login($db, $table, $identifier, $password, &$error) {
-  $selectSql = $table === 'barangay_officials'
-    ? 'SELECT password FROM barangay_officials WHERE username = ? LIMIT 1'
-    : 'SELECT password FROM residents WHERE username = ? LIMIT 1';
+  // Clear an expired lockout before doing anything else. MySQL NOW() only.
+  $clear = $db->prepare("UPDATE {$table} SET failed_logins = 0, locked_until = NULL WHERE username = ? AND locked_until IS NOT NULL AND locked_until <= NOW()");
+  if ($clear) {
+    $clear->bind_param('s', $identifier);
+    $clear->execute();
+    $clear->close();
+  }
 
-  $stmt = $db->prepare($selectSql);
+  $stmt = $db->prepare("SELECT id, password, failed_logins, (locked_until IS NOT NULL AND locked_until > NOW()) AS is_locked FROM {$table} WHERE username = ? LIMIT 1");
   if (!$stmt) {
     $error = 'Unable to verify login at this time.';
     return false;
   }
   $stmt->bind_param('s', $identifier);
   $stmt->execute();
-  $stored = null;
-  $stmt->bind_result($stored);
+  $result = $stmt->get_result();
+  $row = $result ? $result->fetch_assoc() : null;
+  $stmt->close();
 
-  if ($stmt->fetch()) {
-    $stmt->close();
-    if ($stored && password_verify($password, $stored)) {
-      return true;
+  if (!$row) {
+    return false; // caller falls back to the generic invalid-credentials message
+  }
+  if ((int)$row['is_locked'] === 1) {
+    $error = 'Too many attempts. Try again later.';
+    return false;
+  }
+
+  $userId = (int)$row['id'];
+  $stored = (string)$row['password'];
+
+  if ($stored !== '' && password_verify($password, $stored)) {
+    $reset = $db->prepare("UPDATE {$table} SET failed_logins = 0, locked_until = NULL WHERE id = ?");
+    if ($reset) {
+      $reset->bind_param('i', $userId);
+      $reset->execute();
+      $reset->close();
     }
-    if ($stored !== null && $stored !== '' && hash_equals($stored, $password)) {
-      $newHash = password_hash($password, PASSWORD_DEFAULT);
-      $updateSql = $table === 'barangay_officials'
-        ? 'UPDATE barangay_officials SET password = ? WHERE username = ?'
-        : 'UPDATE residents SET password = ? WHERE username = ?';
-      $update = $db->prepare($updateSql);
-      if (!$update) {
-        $error = 'Password upgrade failed. Please reset your password.';
-        return false;
-      }
-      $update->bind_param('ss', $newHash, $identifier);
-      try {
-        if (!$update->execute()) {
-          $error = 'Password upgrade failed: ' . $update->error;
-          $update->close();
-          return false;
-        }
-      } catch (mysqli_sql_exception $ex) {
-        $error = 'Password upgrade failed because the password column is too short. Change it to VARCHAR(255) and try again.';
-        $update->close();
-        return false;
-      }
-      $update->close();
-      return true;
-    }
+    return true;
+  }
+
+  // Wrong password — increment, and lock for 10 minutes once we hit 5.
+  $newCount = ((int)$row['failed_logins']) + 1;
+  if ($newCount >= 5) {
+    $update = $db->prepare("UPDATE {$table} SET failed_logins = ?, locked_until = NOW() + INTERVAL 10 MINUTE WHERE id = ?");
   } else {
-    $stmt->close();
+    $update = $db->prepare("UPDATE {$table} SET failed_logins = ? WHERE id = ?");
+  }
+  if ($update) {
+    $update->bind_param('ii', $newCount, $userId);
+    $update->execute();
+    $update->close();
   }
 
   return false;

@@ -44,7 +44,7 @@ role-based staff/admin access.
 | 🏛️ **Official portal** | Request processing, resident management, complaints, announcements, and local services |
 | 👑 **Admin tools** | Official account management and complete audit-log access |
 | 📲 **SMS notifications** | Status updates, complaint resolution, announcement broadcasts, and OTP recovery via [httpSMS](https://httpsms.com) |
-| 🤖 **AI connectivity** | Gemini diagnostic requests through the AI Analyst endpoint |
+| 🤖 **AI Analyst** | Rule-based vulnerability registry, optional Gemini assessment, calamity triage ranking, and labor-request matching |
 | 📄 **Document generation** | Word-template filling and PDF conversion through LibreOffice |
 | 🧾 **Audit logging** | Official write actions are recorded for traceability |
 | 🔐 **Authentication** | Username + password only; no email-based accounts |
@@ -103,7 +103,7 @@ You need **all** of the following installed and working before this project will
 
 ### 3. httpSMS account (required for all SMS features)
 - Sign up: https://httpsms.com
-- You need：
+- You need:
   - An API key
   - A registered "from" number (the phone acting as the SMS gateway, connected via the httpSMS Android app)
   - A SIM slot identifier (`SIM1` or `SIM2`) if the sending device is dual-SIM
@@ -130,10 +130,12 @@ You need **all** of the following installed and working before this project will
    HTTPSMS_FROM_NUMBER=+63XXXXXXXXXX
    HTTPSMS_SIM_SLOT=SIM1
    GEMINI_API_KEY=your_gemini_api_key
+   GEMINI_MODEL=gemini-3.5-flash-lite
    ```
    (`.env.sms` is also supported as an alternate/legacy filename — `db.php` loads both if present.)
    Gemini settings are required for the AI diagnostic endpoint. The API key is read
    server-side only and must never be placed in browser JavaScript or committed.
+   `GEMINI_MODEL` is optional; when unset, `ai_chat()` falls back to `gemini-3.5-flash-lite`.
 
 4. **Confirm the LibreOffice path.**
    Open `api/requests/generate_document.php` and confirm `$sofficePath` matches your
@@ -175,8 +177,10 @@ You need **all** of the following installed and working before this project will
 
 ## 🔌 AI Diagnostic Test
 
-The AI service is currently connected only to diagnostic endpoints. It does not
-automatically process normal application requests or this project's conversations.
+The AI service powers three real features — Vulnerability Registry assessment,
+Calamity Triage ranking, and Labor Matcher — plus a diagnostic endpoint for
+connectivity checks. All four call `ai_chat()` in `api/common.php`; none of them
+process ordinary application requests or this project's conversations.
 
 With an authenticated admin official session, send a JSON `POST` request to:
 
@@ -212,8 +216,10 @@ The endpoint reads `GEMINI_API_KEY` from the server-side `.env` file and calls
 - **AI diagnostic testing** is available at `api/ai/test.php`. It requires an
   authenticated admin official session and a `POST` request. Send JSON such as
   `{"prompt":"Reply with a short confirmation."}`. The endpoint calls Gemini
-  through `ai_chat()` in `api/common.php`; it does not process ordinary
-  application requests or this project's user conversations through the AI service.
+  through `ai_chat()` in `api/common.php`. Separately, the resident-facing AI
+  features (Vulnerability Registry, Calamity Triage, Labor Matcher) also go
+  through `ai_chat()` — see [Security Notes](#security-notes) for what data
+  each one sends.
 
 ---
 
@@ -231,10 +237,18 @@ production hosting. Before deploying anywhere reachable outside your local machi
   Vulnerability Registry assessment and Calamity Triage ranking
   (`api/ai/assess_residents.php`), and Purok detection for triage
   (`api/ai/extract_puroks.php`). All calls go through `ai_chat()` on the server.
-- The AI assessment sends full resident profiles (including names, addresses,
-  contacts, and PWD / 4Ps / income data) to Google's Gemini API. Review this under
-  the Data Privacy Act of 2012 before real deployment; free-tier API data may be
-  used by Google to improve its models.
+- AI features send **de-identified** resident data to Google's Gemini API. No
+  names, addresses, or contact numbers ever leave the server:
+  - **Vulnerability assessment** (`api/ai/assess_residents.php`) and **Labor
+    matcher** (`api/ai/match_labor.php`) send only structured profiling fields
+    — PWD / 4Ps flags, income bracket, employment status, skills, dependents,
+    Purok. Names and contacts are used server-side to render results back to
+    the official but are excluded from the AI payload.
+  - **Calamity triage Purok detection** (`api/ai/extract_puroks.php`) sends only
+    the situation text and the list of known Purok names.
+  - **Connectivity test** (`api/ai/echo_test.php`) sends only the diagnostic prompt.
+  Review the de-identified data flow under the Data Privacy Act of 2012 before
+  real deployment; free-tier API data may be used by Google to improve its models.
 - The rule-based `eligibility_score` remains the stored baseline. AI assessments are
   not saved to the database and Calamity Triage falls back to formula ranking when
   Gemini is unavailable.

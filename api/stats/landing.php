@@ -9,7 +9,7 @@
 require_once __DIR__ . '/../common.php';
 
 $db = get_db();
-$residentResult = $db->query('SELECT COUNT(*) AS total FROM residents');
+$residentResult = $db->query("SELECT COUNT(*) AS total FROM residents WHERE status = 'active'");
 $serviceResult = $db->query('SELECT COUNT(*) AS total FROM local_services');
 if (!$residentResult || !$serviceResult) {
   json_error('Unable to load landing page statistics.', 500);

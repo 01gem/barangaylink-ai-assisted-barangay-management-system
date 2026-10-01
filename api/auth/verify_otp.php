@@ -28,12 +28,30 @@ $accountStmt->close();
 if (count($accountRows) === 0) json_error('Invalid or expired code.');
 $accountId = (int)$accountRows[0]['id'];
 
-$otpStmt = $db->prepare('SELECT id FROM otp_codes WHERE account_type = ? AND account_id = ? AND code = ? AND used = 0 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1');
+// Fetch the latest unused, unexpired OTP for the account — do NOT match code in SQL,
+// so wrong guesses are counted against the same row.
+$otpStmt = $db->prepare('SELECT id, code, attempts FROM otp_codes WHERE account_type = ? AND account_id = ? AND used = 0 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1');
 if (!$otpStmt) json_error('Unable to verify code.', 500);
-$otpStmt->bind_param('sis', $accountType, $accountId, $code);
+$otpStmt->bind_param('si', $accountType, $accountId);
 $otpRows = db_query_all($otpStmt);
 $otpStmt->close();
 if (count($otpRows) === 0) json_error('Invalid or expired code.');
+
+$otpRow = $otpRows[0];
+if ((int)$otpRow['attempts'] >= 5) {
+  json_error('Invalid or expired code.');
+}
+
+if (!hash_equals((string)$otpRow['code'], $code)) {
+  $bump = $db->prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE id = ?');
+  if ($bump) {
+    $otpId = (int)$otpRow['id'];
+    $bump->bind_param('i', $otpId);
+    $bump->execute();
+    $bump->close();
+  }
+  json_error('Invalid or expired code.');
+}
 
 json_success(['message' => 'Code verified.']);
 ?>
