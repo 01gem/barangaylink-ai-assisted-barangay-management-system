@@ -165,5 +165,3 @@ INSERT INTO `barangay_officials` (`id`, `fname`, `lname`, `username`, `role`, `a
   'gem', 'admin', 'Purok 2, Barangay Sampaguita', '09060312740', '$2y$10$mYgU3xgq32rcE219Q5zXvOkzDni4GcLNT4i.sa9/X3KMoTy6lnZQ2', 'Barangay Captain',
    'active', CURRENT_TIMESTAMP
 );
-
---password unhashed: gemgem
