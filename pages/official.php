@@ -52,7 +52,7 @@ if (count($officialNameParts) >= 2) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/official.css" />
+  <link rel="stylesheet" href="../css/official.css?v=<?= filemtime(__DIR__ . '/../css/official.css') ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -696,6 +696,6 @@ if (count($officialNameParts) >= 2) {
     window.IS_OFFICIAL_ADMIN = <?php echo $isOfficialAdmin ? 'true' : 'false'; ?>;
     window.OFFICIAL_ID = <?php echo (int)$_SESSION['official_id']; ?>;
   </script>
-  <script src="../js/official.js"></script>
+  <script src="../js/official.js?v=<?= filemtime(__DIR__ . '/../js/official.js') ?>"></script>
 </body>
 </html>

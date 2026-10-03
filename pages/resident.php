@@ -56,7 +56,7 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/resident.css" />
+  <link rel="stylesheet" href="../css/resident.css?v=<?= filemtime(__DIR__ . '/../css/resident.css') ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -407,6 +407,6 @@ $residentPhotoUrl = !empty($residentProfile['profile_photo']) ? '../' . ltrim($r
     window.RESIDENT_USERNAME = <?php echo json_encode($residentUsername); ?>;
     window.RESIDENT_NAME = <?php echo json_encode($residentName); ?>;
   </script>
-  <script src="../js/resident.js"></script>
+  <script src="../js/resident.js?v=<?= filemtime(__DIR__ . '/../js/resident.js') ?>"></script>
 </body>
 </html>
