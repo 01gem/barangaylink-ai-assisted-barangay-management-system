@@ -500,11 +500,10 @@ if (count($officialNameParts) >= 2) {
             <span class="ai-tile-ico" style="background:#DCFCE7;color:#16A34A"><i class="fa-solid fa-handshake"></i></span>
             <span class="ai-tile-text"><span class="ai-tile-title">Labor Matcher</span><span class="ai-tile-desc">Match residents to job requests</span></span>
           </button>
-          <div class="ai-tool-tile is-disabled" aria-disabled="true">
-            <span class="ai-tile-ico"><i class="fa-solid fa-chart-column"></i></span>
+          <button type="button" class="ai-tool-tile" data-ai-view="workforce">
+            <span class="ai-tile-ico" style="background:#EDE9FE;color:#7C3AED"><i class="fa-solid fa-chart-column"></i></span>
             <span class="ai-tile-text"><span class="ai-tile-title">Workforce Insights</span><span class="ai-tile-desc">Employment and skill breakdowns</span></span>
-            <span class="ai-tile-badge">Coming soon</span>
-          </div>
+          </button>
           <button type="button" class="ai-tool-tile is-secondary" data-ai-view="echo">
             <span class="ai-tile-ico"><i class="fa-solid fa-plug"></i></span>
             <span class="ai-tile-text"><span class="ai-tile-title">Connectivity Test</span><span class="ai-tile-desc">Verify AI service is responding</span></span>
@@ -591,6 +590,28 @@ if (count($officialNameParts) >= 2) {
               <tbody id="laborResultBody"></tbody>
             </table>
           </div>
+        </div>
+        </div>
+        <div class="ai-subview" data-ai-subview="workforce" hidden>
+        <button type="button" class="ai-back-btn"><i class="fa-solid fa-arrow-left"></i> Back to AI Tools</button>
+        <div class="card vulnerability-registry-card workforce-card">
+          <div class="registry-header">
+            <div>
+              <h3><i class="fa-solid fa-chart-column"></i> Workforce Insights</h3>
+              <p>Employment, education, availability and skill-category breakdowns of active residents. Gemini classifies each resident's occupation and skills into a fixed category once; edits to those fields reset the category.</p>
+            </div>
+            <div class="registry-actions">
+              <button id="workforceClassifyBtn" type="button" class="btn-primary-action"><i class="fa-solid fa-tags"></i> Classify Workforce</button>
+            </div>
+          </div>
+          <div class="table-toolbar">
+            <select id="workforcePurokFilter" class="table-filter" aria-label="Filter workforce insights by Purok">
+              <option value="all">All Puroks</option>
+            </select>
+          </div>
+          <div id="workforceStatus" class="ai-echo-response" role="status" aria-live="polite" hidden></div>
+          <div id="workforceStats" class="stat-cards workforce-stats"></div>
+          <div id="workforceCharts" class="workforce-charts"></div>
         </div>
         </div>
         <div class="ai-subview" data-ai-subview="echo" hidden>

@@ -467,6 +467,19 @@ body.sidebar-collapsed .slider-container {
 .triage-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .triage-card [hidden], .labor-card [hidden] { display: none !important; }
 .labor-card .ai-echo-response { min-height: 0; margin: 0 0 12px; }
+.workforce-card [hidden] { display: none !important; }
+.workforce-card .ai-echo-response { min-height: 0; margin: 0 0 12px; }
+.workforce-stats { margin-bottom: 1.25rem; }
+.workforce-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+.workforce-chart { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.workforce-chart h4 { margin: 0 0 12px; color: var(--text-2); font-size: 13px; font-weight: 700; }
+.workforce-bar-row { display: grid; grid-template-columns: minmax(110px, 38%) 1fr auto; align-items: center; gap: 10px; margin-bottom: 7px; font-size: 12.5px; }
+.workforce-bar-label { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workforce-bar-track { display: block; height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.workforce-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--blue-mid); transition: width var(--t); }
+.workforce-bar-fill.is-muted { background: #CBD5E1; }
+.workforce-bar-count { color: var(--text-3); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.workforce-empty { color: var(--text-3); font-size: 12.5px; }
 .registry-actions { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
 .ai-assessment-cell { min-width: 220px; max-width: 360px; }
 .ai-tier { display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }

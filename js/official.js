@@ -601,6 +601,192 @@ function initLaborMatcher() {
   });
 }
 
+// ── WORKFORCE INSIGHTS ────────────────────
+const WORKFORCE_CATEGORIES = [
+  'Skilled Trades', 'Unskilled Labor', 'Agriculture & Fishing', 'Office & Professional',
+  'Sales & Services', 'Transport & Driving', 'Business Owner', 'Homemaker', 'Student',
+  'Retired', 'Other', 'No Skills Listed'
+];
+const WORKFORCE_BATCH_SIZE = 25;
+const WORKFORCE_UNCLASSIFIED = 'Unclassified';
+
+// Values outside the fixed list (legacy imports) count as unclassified, matching the server.
+function workforceCategory(resident) {
+  const value = String(resident.skill_category || '');
+  return WORKFORCE_CATEGORIES.includes(value) ? value : '';
+}
+
+function residentAgeYears(birthdate) {
+  if (!birthdate) return null;
+  const birth = new Date(`${birthdate}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const beforeBirthday = today.getMonth() < birth.getMonth()
+    || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+  if (beforeBirthday) age--;
+  return age;
+}
+
+function workforceNeedsGemini(resident) {
+  if (resident.employment_status === 'Student' || resident.employment_status === 'Retired') return false;
+  return Boolean(String(resident.occupation || '').trim() || String(resident.skills || '').trim());
+}
+
+function workforceDistribution(residents, getValue, order = null, emptyLabel = 'Not provided') {
+  const counts = new Map();
+  residents.forEach(resident => {
+    const key = getValue(resident) || emptyLabel;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  const keys = order
+    ? [...order.filter(key => counts.has(key)), ...[...counts.keys()].filter(key => !order.includes(key))]
+    : [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b));
+  return keys.map(label => ({ label, count: counts.get(label) }));
+}
+
+function workforceChartHtml(title, rows, total, mutedLabels = []) {
+  const max = rows.reduce((peak, row) => Math.max(peak, row.count), 0);
+  const bars = rows.map(row => {
+    const width = max ? Math.round((row.count / max) * 100) : 0;
+    const share = total ? Math.round((row.count / total) * 100) : 0;
+    const muted = mutedLabels.includes(row.label) ? ' is-muted' : '';
+    return `<div class="workforce-bar-row">
+      <span class="workforce-bar-label" title="${escapeAttribute(row.label)}">${escapeHtml(row.label)}</span>
+      <span class="workforce-bar-track"><span class="workforce-bar-fill${muted}" style="width:${width}%"></span></span>
+      <span class="workforce-bar-count">${row.count} · ${share}%</span>
+    </div>`;
+  }).join('');
+  return `<div class="workforce-chart"><h4>${escapeHtml(title)}</h4>${bars || '<p class="workforce-empty">No data.</p>'}</div>`;
+}
+
+function renderWorkforceInsights() {
+  const filter = document.getElementById('workforcePurokFilter');
+  const statsEl = document.getElementById('workforceStats');
+  const chartsEl = document.getElementById('workforceCharts');
+  if (!filter || !statsEl || !chartsEl) return;
+
+  const active = activeResidents();
+  const puroks = [...new Set(active.map(r => r.purok_zone).filter(Boolean))].sort();
+  const selected = filter.value;
+  filter.innerHTML = '<option value="all">All Puroks</option>'
+    + puroks.map(purok => `<option value="${escapeAttribute(purok)}">${escapeHtml(purok)}</option>`).join('');
+  filter.value = puroks.includes(selected) ? selected : 'all';
+
+  const residents = active.filter(resident => filter.value === 'all' || resident.purok_zone === filter.value);
+  const availableNow = resident => ['Unemployed', 'Self-Employed'].includes(resident.employment_status)
+    && resident.work_availability !== 'Not looking';
+  const stats = [
+    {
+      val: residents.filter(r => { const age = residentAgeYears(r.birthdate); return age !== null && age >= 18 && age <= 30 && r.employment_status === 'Unemployed'; }).length,
+      lbl: 'Unemployed Youth (18–30)', ico: 'fa-user-clock', bg: '#FEE2E2', color: '#EF4444'
+    },
+    { val: residents.filter(r => r.educational_attainment === 'College').length, lbl: 'College Graduates', ico: 'fa-graduation-cap', bg: '#DBEAFE', color: '#1976D2' },
+    { val: residents.filter(availableNow).length, lbl: 'Available Now', ico: 'fa-briefcase', bg: '#DCFCE7', color: '#16A34A' },
+    {
+      val: residents.filter(r => workforceCategory(r) === 'Skilled Trades' && r.work_availability !== 'Not looking').length,
+      lbl: 'Skilled Trades Available', ico: 'fa-screwdriver-wrench', bg: '#FEF9C3', color: '#D97706'
+    }
+  ];
+  statsEl.innerHTML = stats.map(s => `
+    <div class="stat-card">
+      <div class="sc-ico" style="background:${s.bg};color:${s.color}"><i class="fa-solid ${s.ico}"></i></div>
+      <div class="sc-data"><div class="sc-val">${s.val}</div><div class="sc-lbl">${escapeHtml(s.lbl)}</div></div>
+    </div>`).join('');
+
+  const total = residents.length;
+  chartsEl.innerHTML = [
+    workforceChartHtml('Skill Category',
+      workforceDistribution(residents, workforceCategory, [...WORKFORCE_CATEGORIES, WORKFORCE_UNCLASSIFIED], WORKFORCE_UNCLASSIFIED),
+      total, [WORKFORCE_UNCLASSIFIED]),
+    workforceChartHtml('Employment Status',
+      workforceDistribution(residents, r => r.employment_status, ['Employed', 'Self-Employed', 'Unemployed', 'Student', 'Retired']), total, ['Not provided']),
+    workforceChartHtml('Educational Attainment',
+      workforceDistribution(residents, r => r.educational_attainment, ['Elementary', 'High School', 'Vocational', 'College', 'Postgraduate']), total, ['Not provided']),
+    workforceChartHtml('Work Availability',
+      workforceDistribution(residents, r => r.work_availability, ['Full-time', 'Part-time', 'Seasonal', 'Not looking']), total, ['Not provided'])
+  ].join('');
+}
+
+async function runWorkforceClassification(button, status) {
+  const pending = activeResidents().filter(resident => !workforceCategory(resident));
+  const total = pending.length;
+  if (!total) {
+    showToastAdmin('Nothing to Classify', 'Every active resident already has a skill category.');
+    return;
+  }
+  const geminiCalls = Math.ceil(pending.filter(workforceNeedsGemini).length / WORKFORCE_BATCH_SIZE);
+  if (!window.confirm(`Classify ${total} residents? This makes ~${geminiCalls} Gemini calls.`)) return;
+
+  const post = body => fetchJson(`${API_BASE}/ai/classify_workforce.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  button.disabled = true;
+  status.hidden = true;
+  let classified = 0;
+  let batches = 0;
+  let model = '';
+  let failure = null;
+  button.textContent = `0 of ${total} classified`;
+  try {
+    while (true) {
+      if (batches > 0) await new Promise(r => setTimeout(r, 600));
+      let data;
+      try {
+        data = await post({ final: false });
+      } catch (err) {
+        failure = /HTTP 429/.test(err.message)
+          ? `Classified ${classified} of ${total} — Gemini rate-limited. Click again to continue.`
+          : `Classified ${classified} of ${total} — ${err.message} Click again to continue.`;
+        break;
+      }
+      batches++;
+      const done = Number(data.classified) || 0;
+      classified += done;
+      if (data.model) model = data.model;
+      button.textContent = `${classified} of ${total} classified`;
+      if (!(Number(data.remaining) > 0)) break;
+      if (!done) {
+        failure = `Classified ${classified} of ${total} — AI skipped the remaining residents. Click again to retry.`;
+        break;
+      }
+    }
+    if (batches > 0 && classified > 0) {
+      try { await post({ final: true, classified, batches, model }); } catch (err) { /* audit only */ }
+    }
+  } finally {
+    button.disabled = false;
+    button.innerHTML = '<i class="fa-solid fa-tags"></i> Classify Workforce';
+  }
+
+  if (failure) {
+    status.hidden = false;
+    status.className = 'ai-echo-response is-error';
+    status.textContent = failure;
+  } else {
+    showToastAdmin('Workforce Classified', `${classified} of ${total} residents classified.`);
+  }
+  try {
+    await loadResidents();
+    await loadAuditLog();
+  } catch (err) {
+    showToastAdmin('Refresh Failed', err.message);
+  }
+}
+
+function initWorkforceInsights() {
+  const filter = document.getElementById('workforcePurokFilter');
+  const button = document.getElementById('workforceClassifyBtn');
+  const status = document.getElementById('workforceStatus');
+  if (!filter || !button || !status) return;
+  filter.addEventListener('change', renderWorkforceInsights);
+  button.addEventListener('click', () => runWorkforceClassification(button, status));
+  renderWorkforceInsights();
+}
+
 function findResidentContactForRequest(req) {
   if (!req) return '';
   if (req.residentId) {
@@ -744,6 +930,7 @@ function mapResidentRow(row) {
     training_certifications: row.training_certifications || '',
     work_availability: row.work_availability || '',
     has_drivers_license: Number(row.has_drivers_license || 0),
+    skill_category: row.skill_category || '',
     eligibility_score: Number(row.eligibility_score || 0)
   };
 }
@@ -830,6 +1017,7 @@ async function loadResidents() {
   renderResidents(RESIDENTS);
   renderVulnerabilityRegistry();
   renderTriagePurokOptions();
+  renderWorkforceInsights();
 }
 
 function calculateRegistryFactors(resident) {
@@ -2028,6 +2216,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initLaborMatcher();
   initVulnerabilityRegistry();
   initCalamityTriage();
+  initWorkforceInsights();
   renderAuditLog();
   (async () => {
     try {

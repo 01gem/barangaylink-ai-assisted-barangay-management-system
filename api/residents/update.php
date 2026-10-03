@@ -38,6 +38,14 @@ if (count($rows) > 0) {
   json_error('Resident username already exists.');
 }
 
+// Snapshot the fields the workforce classifier reads, so a change can invalidate skill_category.
+$prev = $db->prepare("SELECT occupation, skills, educational_attainment, employment_status FROM residents WHERE id = ? LIMIT 1");
+if (!$prev) json_error('Failed to load resident.', 500);
+$prev->bind_param('i', $id);
+$prevRows = db_query_all($prev);
+$prev->close();
+$previousProfile = $prevRows[0] ?? null;
+
 // ── Profiling fields (all optional) ──
 $birthdate = trim((string)($input['birthdate'] ?? '')) ?: null;
 $civil_status = trim((string)($input['civil_status'] ?? '')) ?: null;
@@ -99,6 +107,33 @@ if (!$stmt->execute()) {
   json_db_error('Failed to update resident', $stmt->error);
 }
 $stmt->close();
+
+// Reset the cached skill category when any classifier input changed.
+if ($previousProfile !== null) {
+  $classifierInputs = [
+    'occupation' => $occupation,
+    'skills' => $skills,
+    'educational_attainment' => $educational_attainment,
+    'employment_status' => $employment_status,
+  ];
+  $classifierInputChanged = false;
+  foreach ($classifierInputs as $field => $value) {
+    if (trim((string)($previousProfile[$field] ?? '')) !== trim((string)($value ?? ''))) {
+      $classifierInputChanged = true;
+      break;
+    }
+  }
+  if ($classifierInputChanged) {
+    $reset = $db->prepare("UPDATE residents SET skill_category = NULL WHERE id = ?");
+    if ($reset) {
+      $reset->bind_param('i', $id);
+      if (!$reset->execute()) {
+        error_log('Failed to reset skill_category for resident ' . $id . ': ' . $reset->error);
+      }
+      $reset->close();
+    }
+  }
+}
 
 log_audit(
   $db,
