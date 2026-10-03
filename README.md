@@ -137,18 +137,28 @@ You need **all** of the following installed and working before this project will
    server-side only and must never be placed in browser JavaScript or committed.
    `GEMINI_MODEL` is optional; when unset, `ai_chat()` falls back to `gemini-3.5-flash-lite`.
 
-4. **Confirm the LibreOffice path.**
+4. **Harden PHP session cookies.**
+   `db.php` sets these at runtime with `ini_set()`, but set them in `php.ini` too so
+   every entry point gets the same protection:
+   ```ini
+   session.cookie_httponly = 1
+   session.cookie_samesite = Lax
+   session.use_strict_mode = 1
+   ```
+   Restart Apache after editing `php.ini`.
+
+5. **Confirm the LibreOffice path.**
    Open `api/requests/generate_document.php` and confirm `$sofficePath` matches your
    actual LibreOffice install location.
 
-5. **Create your first official (admin) account manually.**
+6. **Create your first official (admin) account manually.**
    Official self-registration is intentionally disabled (see
    [Security Notes](#security-notes)). Insert your first admin account directly via
    phpMyAdmin/MySQL — a commented example `INSERT` statement is included at the bottom
    of `database.sql`. Passwords must be hashed with PHP's `password_hash()` — do not
    insert a plain-text password.
 
-6. **Start Laragon** (Apache + MySQL) and visit:
+7. **Start Laragon** (Apache + MySQL) and visit:
    ```
    http://localhost/BarangayLink/index.php
    ```
