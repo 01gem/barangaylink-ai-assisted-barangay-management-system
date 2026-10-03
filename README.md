@@ -70,7 +70,7 @@ No Composer or npm dependencies — the project runs as-is once the prerequisite
 
 ```text
 1. Start Laragon (Apache + MySQL)
-2. Import database.sql (default password for admin/captain: gemgem)
+2. Import database.sql (default password for captain/admin: gemgem)
 3. Create the ignored .env file
 4. Create the first admin official account manually
 5. Open index.php in your browser
