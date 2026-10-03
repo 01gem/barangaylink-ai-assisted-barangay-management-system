@@ -41,7 +41,6 @@ if (count($rateRows) > 0) {
   json_success(['message' => 'A reset code was recently sent. Please wait at least 60 seconds before requesting another.']);
 }
 $code = (string)random_int(100000, 999999);
-$code = (string)random_int(100000, 999999);
 $insert = $db->prepare('INSERT INTO otp_codes (account_type, account_id, code, expires_at) VALUES (?, ?, ?, NOW() + INTERVAL 10 MINUTE)');
 if (!$insert) json_error('Unable to create password reset code.', 500);
 $insert->bind_param('sis', $accountType, $accountId, $code);

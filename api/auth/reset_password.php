@@ -53,7 +53,8 @@ if (!hash_equals((string)$otpRow['code'], $code)) {
 }
 
 $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-$update = $db->prepare("UPDATE {$table} SET password = ? WHERE id = ?");
+// New password also clears any login lockout so the user can sign in right away.
+$update = $db->prepare("UPDATE {$table} SET password = ?, failed_logins = 0, locked_until = NULL WHERE id = ?");
 if (!$update) json_error('Unable to update password.', 500);
 $update->bind_param('si', $hash, $accountId);
 if (!$update->execute()) json_error('Unable to update password.', 500);

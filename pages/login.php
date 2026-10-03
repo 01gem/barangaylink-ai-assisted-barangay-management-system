@@ -41,7 +41,8 @@ function verify_user_login($db, $table, $identifier, $password, &$error) {
     return false; // caller falls back to the generic invalid-credentials message
   }
   if ((int)$row['is_locked'] === 1) {
-    $error = 'Too many attempts. Try again later.';
+    // Locked: fall through to the generic invalid-credentials message so the
+    // response does not reveal that the username exists.
     return false;
   }
 
@@ -58,15 +59,11 @@ function verify_user_login($db, $table, $identifier, $password, &$error) {
     return true;
   }
 
-  // Wrong password — increment, and lock for 10 minutes once we hit 5.
-  $newCount = ((int)$row['failed_logins']) + 1;
-  if ($newCount >= 5) {
-    $update = $db->prepare("UPDATE {$table} SET failed_logins = ?, locked_until = NOW() + INTERVAL 10 MINUTE WHERE id = ?");
-  } else {
-    $update = $db->prepare("UPDATE {$table} SET failed_logins = ? WHERE id = ?");
-  }
+  // Wrong password — one atomic UPDATE so parallel guesses each count.
+  // locked_until is assigned first so it sees the pre-increment value.
+  $update = $db->prepare("UPDATE {$table} SET locked_until = IF(failed_logins + 1 >= 5, NOW() + INTERVAL 10 MINUTE, locked_until), failed_logins = failed_logins + 1 WHERE id = ?");
   if ($update) {
-    $update->bind_param('ii', $newCount, $userId);
+    $update->bind_param('i', $userId);
     $update->execute();
     $update->close();
   }
