@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS `local_services` (
 );
 
 INSERT INTO `barangay_officials` (`id`, `fname`, `lname`, `username`, `role`, `address`,
- `contact`, `password`, `position`, `status`, `created_at`) VALUES (NULL, 'Gem', 'Dulduco',
-  'gem', 'admin', 'Purok 2, Barangay Sampaguita', '09060312740', '$2y$10$mYgU3xgq32rcE219Q5zXvOkzDni4GcLNT4i.sa9/X3KMoTy6lnZQ2', 'Barangay Captain',
+ `contact`, `password`, `position`, `status`, `created_at`) VALUES (NULL, 'Gem', 'Lander',
+  'gem', 'admin', 'Purok 1, Barangay Sampaguita', '09999999999', '$2y$10$mYgU3xgq32rcE219Q5zXvOkzDni4GcLNT4i.sa9/X3KMoTy6lnZQ2', 'Barangay Captain',
    'active', CURRENT_TIMESTAMP
 );
