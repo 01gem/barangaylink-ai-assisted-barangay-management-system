@@ -6,8 +6,8 @@
  * See the LICENSE file in the project root for the full text.
  */
 
-session_start();
 require_once __DIR__ . '/../common.php';
+session_start();
 require_official_session();
 require_post();
 

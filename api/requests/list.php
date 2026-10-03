@@ -19,14 +19,10 @@ if (!$officialSession && !$residentSession) {
   exit;
 }
 
-try {
-  $stmt = $db->prepare('SELECT * FROM document_requests ORDER BY id DESC');
-  if (!$stmt) json_error('Failed to prepare requests query.', 500);
-  $rows = db_query_all($stmt);
-  $stmt->close();
-} catch (mysqli_sql_exception $e) {
-  json_error('Failed to load requests.', 500);
-}
+$stmt = $db->prepare('SELECT * FROM document_requests ORDER BY id DESC');
+if (!$stmt) json_error('Failed to prepare requests query.', 500);
+$rows = db_query_all($stmt);
+$stmt->close();
 
 if (!$officialSession) {
   $residentId = !empty($_SESSION['resident_id']) ? (int)$_SESSION['resident_id'] : 0;

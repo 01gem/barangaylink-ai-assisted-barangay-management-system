@@ -6,6 +6,7 @@
  * See the LICENSE file in the project root for the full text.
  */
 
+require_once __DIR__ . '/db.php';
 session_start();
 $_SESSION = [];
 
