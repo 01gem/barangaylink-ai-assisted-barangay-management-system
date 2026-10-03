@@ -206,7 +206,8 @@ $finalPdfPath = $outputDir . DIRECTORY_SEPARATOR . $referenceNo . '.pdf';
 if ($convertExitCode !== 0 || !file_exists($finalPdfPath)) {
   remove_dir_tree($tempDir);
   $details = trim(implode("\n", $convertOutput));
-  json_error('Failed to convert DOCX to PDF via LibreOffice.' . ($details !== '' ? ' ' . $details : ''), 500);
+  error_log('LibreOffice conversion failed (exit ' . $convertExitCode . '): ' . $details);
+  json_error('Failed to generate the document. Please try again.', 500);
 }
 
 remove_dir_tree($tempDir);
