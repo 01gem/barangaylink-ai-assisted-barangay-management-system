@@ -50,7 +50,7 @@ $stmt = $db->prepare('UPDATE barangay_officials SET status = ? WHERE id = ?');
 if (!$stmt) json_error('Failed to prepare official status update.', 500);
 $stmt->bind_param('si', $newStatus, $id);
 if (!$stmt->execute()) {
-  json_error('Failed to update official status: ' . $stmt->error, 500);
+  json_db_error('Failed to update official status', $stmt->error);
 }
 $stmt->close();
 

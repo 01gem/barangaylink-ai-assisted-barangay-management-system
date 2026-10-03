@@ -44,7 +44,7 @@ $stmt = $db->prepare('DELETE FROM local_services WHERE id = ?');
 if (!$stmt) json_error('Failed to prepare service delete.', 500);
 $stmt->bind_param('i', $id);
 if (!$stmt->execute()) {
-  json_error('Failed to delete service: ' . $stmt->error, 500);
+  json_db_error('Failed to delete service', $stmt->error);
 }
 if ($stmt->affected_rows === 0) {
   $stmt->close();

@@ -36,7 +36,7 @@ $stmt = $db->prepare('UPDATE residents SET status = ? WHERE id = ?');
 if (!$stmt) json_error('Failed to prepare resident status update.', 500);
 $stmt->bind_param('si', $newStatus, $id);
 if (!$stmt->execute()) {
-  json_error('Failed to update resident status: ' . $stmt->error, 500);
+  json_db_error('Failed to update resident status', $stmt->error);
 }
 $stmt->close();
 

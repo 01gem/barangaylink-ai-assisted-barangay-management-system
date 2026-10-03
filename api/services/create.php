@@ -35,7 +35,7 @@ $stmt = $db->prepare('INSERT INTO local_services (service_name, category, contac
 if (!$stmt) json_error('Failed to prepare service insert.', 500);
 $stmt->bind_param('ssssssi', $serviceName, $category, $contactNumber, $address, $operatingHours, $description, $postedBy);
 if (!$stmt->execute()) {
-  json_error('Failed to create service: ' . $stmt->error, 500);
+  json_db_error('Failed to create service', $stmt->error);
 }
 $serviceId = $stmt->insert_id;
 $stmt->close();

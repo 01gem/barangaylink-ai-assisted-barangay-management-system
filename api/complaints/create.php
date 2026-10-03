@@ -42,7 +42,7 @@ $stmt = $db->prepare("INSERT INTO complaints (resident_id, reference_no, residen
 if (!$stmt) json_error('Failed to prepare complaint insert.', 500);
 $stmt->bind_param('issssssss', $residentId, $ref, $residentName, $category, $location, $description, $dateFiled, $status, $note);
 if (!$stmt->execute()) {
-  json_error('Failed to submit complaint: ' . $stmt->error, 500);
+  json_db_error('Failed to submit complaint', $stmt->error);
 }
 $stmt->close();
 

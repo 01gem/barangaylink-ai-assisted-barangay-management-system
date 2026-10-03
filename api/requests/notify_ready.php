@@ -126,7 +126,7 @@ if (!$upStmt) json_error('Failed to prepare request status update.', 500);
 $requestId = (int)$request['id'];
 $upStmt->bind_param('si', $status, $requestId);
 if (!$upStmt->execute()) {
-  json_error('Failed to update request status: ' . $upStmt->error, 500);
+  json_db_error('Failed to update request status', $upStmt->error);
 }
 $upStmt->close();
 

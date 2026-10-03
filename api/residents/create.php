@@ -82,7 +82,7 @@ $insert->bind_param('sssssssssiiiiiiisssssissii',
   $score
 );
 if (!$insert->execute()) {
-  json_error('Failed to create resident: ' . $insert->error, 500);
+  json_db_error('Failed to create resident', $insert->error);
 }
 $residentId = (int)$insert->insert_id;
 $insert->close();

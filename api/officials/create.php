@@ -47,7 +47,7 @@ $insert = $db->prepare('INSERT INTO barangay_officials (fname, lname, username, 
 if (!$insert) json_error('Failed to prepare official insert.', 500);
 $insert->bind_param('ssssssss', $fname, $lname, $username, $role, $address, $contact, $hash, $position);
 if (!$insert->execute()) {
-  json_error('Failed to create official: ' . $insert->error, 500);
+  json_db_error('Failed to create official', $insert->error);
 }
 $officialId = (int)$insert->insert_id;
 $insert->close();

@@ -96,7 +96,7 @@ if ($password !== '') {
 }
 
 if (!$stmt->execute()) {
-  json_error('Failed to update resident: ' . $stmt->error, 500);
+  json_db_error('Failed to update resident', $stmt->error);
 }
 $stmt->close();
 

@@ -21,6 +21,12 @@ function json_error(string $message, int $status = 400): void {
   exit;
 }
 
+// Log the real database/exception detail server-side; never send it to the client.
+function json_db_error(string $context, string $detail, int $status = 500): void {
+  error_log($context . ': ' . $detail);
+  json_error('Something went wrong. Please try again.', $status);
+}
+
 function read_json_input(): array {
   $raw = file_get_contents('php://input');
   if ($raw === false || $raw === '') return [];
@@ -53,7 +59,7 @@ function official_full_name(array $row): string {
 
 function db_query_all(mysqli_stmt $stmt): array {
   if (!$stmt->execute()) {
-    json_error('Database query failed: ' . $stmt->error, 500);
+    json_db_error('Database query failed', $stmt->error);
   }
   $result = $stmt->get_result();
   return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];

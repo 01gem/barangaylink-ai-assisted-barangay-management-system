@@ -46,7 +46,7 @@ $stmt = $db->prepare('UPDATE complaints SET status = ?, official_note = ? WHERE 
 if (!$stmt) json_error('Failed to prepare complaint update.', 500);
 $stmt->bind_param('ssi', $status, $officialNote, $id);
 if (!$stmt->execute()) {
-  json_error('Failed to update complaint: ' . $stmt->error, 500);
+  json_db_error('Failed to update complaint', $stmt->error);
 }
 $stmt->close();
 
@@ -61,7 +61,7 @@ if ($residentId > 0) {
   if (!$notify) json_error('Failed to prepare complaint notification insert.', 500);
   $notify->bind_param('issis', $residentId, $title, $body, $isRead, $createdAt);
   if (!$notify->execute()) {
-    json_error('Failed to create complaint notification: ' . $notify->error, 500);
+    json_db_error('Failed to create complaint notification', $notify->error);
   }
   $notify->close();
 }

@@ -41,11 +41,11 @@ try {
   $stmt->bind_param('sisssss', $ref, $residentId, $residentName, $documentType, $purpose, $dateRequested, $status);
 
   if (!$stmt->execute()) {
-    json_error('Failed to submit request: ' . $stmt->error, 500);
+    json_db_error('Failed to submit request', $stmt->error);
   }
   $stmt->close();
 } catch (Throwable $e) {
-  json_error('Failed to submit request: ' . $e->getMessage(), 500);
+  json_db_error('Failed to submit request', $e->getMessage());
 }
 
 json_success(['reference_no' => $ref, 'message' => 'Request submitted successfully.']);

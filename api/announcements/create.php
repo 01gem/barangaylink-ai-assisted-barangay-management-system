@@ -45,7 +45,7 @@ $stmt = $db->prepare('INSERT INTO announcements (title, content, expires_at, is_
 if (!$stmt) json_error('Failed to prepare announcement insert.', 500);
 $stmt->bind_param('sssii', $title, $content, $expiresAt, $isPinned, $postedBy);
 if (!$stmt->execute()) {
-  json_error('Failed to create announcement: ' . $stmt->error, 500);
+  json_db_error('Failed to create announcement', $stmt->error);
 }
 $announcementId = $stmt->insert_id;
 $stmt->close();

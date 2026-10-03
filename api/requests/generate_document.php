@@ -221,7 +221,7 @@ $pathStmt->bind_param('si', $storedPath, $requestId);
 if (!$pathStmt->execute()) {
   $error = $pathStmt->error;
   $pathStmt->close();
-  json_error('Failed to persist generated document path: ' . $error, 500);
+  json_db_error('Failed to persist generated document path', $error);
 }
 $pathStmt->close();
 

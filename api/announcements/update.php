@@ -54,7 +54,7 @@ $stmt = $db->prepare('UPDATE announcements SET title = ?, content = ?, expires_a
 if (!$stmt) json_error('Failed to prepare announcement update.', 500);
 $stmt->bind_param('sssii', $title, $content, $expiresAt, $isPinned, $id);
 if (!$stmt->execute()) {
-  json_error('Failed to update announcement: ' . $stmt->error, 500);
+  json_db_error('Failed to update announcement', $stmt->error);
 }
 $stmt->close();
 

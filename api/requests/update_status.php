@@ -51,7 +51,7 @@ $up = $db->prepare("UPDATE document_requests SET status = ? WHERE id = ?");
 if (!$up) json_error('Failed to prepare update.', 500);
 $rid = (int)$req['id'];
 $up->bind_param('si', $newStatus, $rid);
-if (!$up->execute()) json_error('Failed to update status: ' . $up->error, 500);
+if (!$up->execute()) json_db_error('Failed to update status', $up->error);
 $up->close();
 
 $residentId = (int)($req['resident_id'] ?? 0);
@@ -69,7 +69,7 @@ if ($residentId > 0) {
   if (!$notify) json_error('Failed to prepare notification insert.', 500);
   $notify->bind_param('issis', $residentId, $title, $body, $isRead, $createdAt);
   if (!$notify->execute()) {
-    json_error('Failed to create notification: ' . $notify->error, 500);
+    json_db_error('Failed to create notification', $notify->error);
   }
   $notify->close();
 }

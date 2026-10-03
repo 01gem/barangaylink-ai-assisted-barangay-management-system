@@ -79,7 +79,7 @@ if ($password !== '') {
 }
 
 if (!$stmt->execute()) {
-  json_error('Failed to update official: ' . $stmt->error, 500);
+  json_db_error('Failed to update official', $stmt->error);
 }
 $stmt->close();
 

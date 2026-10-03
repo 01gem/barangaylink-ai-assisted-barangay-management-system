@@ -44,7 +44,7 @@ $stmt = $db->prepare('UPDATE local_services SET service_name = ?, category = ?, 
 if (!$stmt) json_error('Failed to prepare service update.', 500);
 $stmt->bind_param('ssssssi', $serviceName, $category, $contactNumber, $address, $operatingHours, $description, $id);
 if (!$stmt->execute()) {
-  json_error('Failed to update service: ' . $stmt->error, 500);
+  json_db_error('Failed to update service', $stmt->error);
 }
 $stmt->close();
 
